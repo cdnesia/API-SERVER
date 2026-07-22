@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -r ' *)",
+      "Read(//tmp/**)",
+      "Bash(rm -f storage/app/api-clients/preview*.txt)",
+      "Bash(php artisan *)",
+      "Bash(php -l app/Console/Commands/ApiClientCreate.php)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
