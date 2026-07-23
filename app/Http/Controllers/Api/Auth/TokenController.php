@@ -66,11 +66,12 @@ class TokenController extends Controller
         $now = time();
 
         $payload = [
-            'iss' => config('jwt.issuer'),
-            'sub' => $client->client_id,
-            'iat' => $now,
-            'exp' => $now + $ttl,
-            'jti' => (string) Str::uuid(),
+            'iss'    => config('jwt.issuer'),
+            'sub'    => $client->client_id,
+            'iat'    => $now,
+            'exp'    => $now + $ttl,
+            'jti'    => (string) Str::uuid(),
+            'scopes' => $client->scopes ?? [],
         ];
 
         $privateKey = File::get(base_path(config('jwt.private_key_path')));

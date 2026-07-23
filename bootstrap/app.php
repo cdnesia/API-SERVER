@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'jwt.auth' => \App\Http\Middleware\VerifyApiToken::class,
+            'scope'    => \App\Http\Middleware\VerifyScope::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

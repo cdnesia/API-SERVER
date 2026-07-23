@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Console\Commands\Concerns\GeneratesApiCredentials;
+use App\Console\Commands\Concerns\ManagesApiScopes;
 use App\Models\ApiClient;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -16,7 +17,7 @@ use function Laravel\Prompts\text;
 #[Description('Create a new API client for CRUD access: an RSA keypair (asymmetric, for the token request) plus a client_secret (symmetric, for per-request signing)')]
 class ApiClientCreate extends Command
 {
-    use GeneratesApiCredentials;
+    use GeneratesApiCredentials, ManagesApiScopes;
 
     public function handle(): int
     {
@@ -39,6 +40,8 @@ class ApiClientCreate extends Command
             }
         }
 
+        $scopes = $this->promptForScopes();
+
         $clientId = (string) Str::uuid();
         $credentials = $this->generateApiCredentials();
 
@@ -48,6 +51,7 @@ class ApiClientCreate extends Command
             'public_key' => $credentials['public_key'],
             'client_secret' => $credentials['client_secret'],
             'is_active' => true,
+            'scopes' => $scopes,
         ]);
 
         $this->components->info("API client \"{$name}\" created successfully.");
@@ -59,6 +63,10 @@ class ApiClientCreate extends Command
 
         $this->line('  <fg=green>Client Secret</>');
         $this->line($credentials['client_secret']);
+        $this->newLine();
+
+        $this->line('  <fg=green>Scopes</>');
+        $this->line(implode(', ', $scopes ?: ['none']));
         $this->newLine();
 
         $this->line('  <fg=green>Private Key</>');

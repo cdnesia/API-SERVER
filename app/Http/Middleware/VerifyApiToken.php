@@ -69,6 +69,7 @@ class VerifyApiToken
         }
 
         $request->attributes->set('api_client', $client);
+        $request->attributes->set('api_scopes', (array) ($decoded->scopes ?? []));
 
         return $next($request);
     }
