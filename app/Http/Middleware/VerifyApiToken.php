@@ -9,6 +9,7 @@ use Closure;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use UnexpectedValueException;
@@ -54,6 +55,12 @@ class VerifyApiToken
             return ApiResponse::error('Invalid or stale X-TIMESTAMP.', null, 401, 401007);
         }
 
+        try {
+            $clientSecret = $client->client_secret;
+        } catch (DecryptException) {
+            return ApiResponse::error('Invalid token.', null, 401, 401003);
+        }
+
         $verified = SnapSignature::verifySymmetric(
             method: $request->method(),
             path: '/'.$request->path(),
@@ -61,7 +68,7 @@ class VerifyApiToken
             rawBody: $request->getContent(),
             timestamp: $timestamp,
             signatureBase64: $signature,
-            clientSecret: $client->client_secret,
+            clientSecret: $clientSecret,
         );
 
         if (! $verified) {
