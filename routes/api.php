@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\TokenController;
 use App\Http\Controllers\Api\KhsController;
 use App\Http\Controllers\Api\KrsController;
+use App\Http\Controllers\api\PegawaiController;
 use App\Http\Controllers\Api\TagihanController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Support\ApiResponse;
@@ -42,7 +43,6 @@ Route::middleware('jwt.auth')->group(function () {
             ->middleware('scope:tagihan:read,tagihan:cek-lunas');
     });
 
-    // ── Telegram Notification ──
     Route::prefix('telegram')->group(function () {
         Route::post('/send-message', [TelegramController::class, 'sendMessage'])
             ->middleware('scope:telegram:read,telegram:send-message');
@@ -55,5 +55,9 @@ Route::middleware('jwt.auth')->group(function () {
 
         Route::post('/broadcast', [TelegramController::class, 'broadcast'])
             ->middleware('scope:telegram:read,telegram:broadcast');
+    });
+
+    Route::prefix('pegawai')->middleware('scope:pegawai:read')->group(function () {
+        Route::post('/', [PegawaiController::class, 'cetak']);
     });
 });
