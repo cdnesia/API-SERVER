@@ -58,6 +58,6 @@ Route::middleware('jwt.auth')->group(function () {
     });
 
     Route::prefix('pegawai')->middleware('scope:pegawai:read')->group(function () {
-        Route::post('/', [PegawaiController::class, 'cetak']);
+        Route::post('/', [PegawaiController::class, 'index']);
     });
 });
