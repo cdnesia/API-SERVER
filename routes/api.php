@@ -3,7 +3,7 @@
 use App\Http\Controllers\Api\Auth\TokenController;
 use App\Http\Controllers\Api\KhsController;
 use App\Http\Controllers\Api\KrsController;
-use App\Http\Controllers\api\PegawaiController;
+use App\Http\Controllers\Api\PegawaiController;
 use App\Http\Controllers\Api\TagihanController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Support\ApiResponse;
