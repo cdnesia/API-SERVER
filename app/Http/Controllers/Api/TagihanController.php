@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\TagihanService;
 use App\Support\ApiResponse;
+use App\Support\ErrorCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -14,15 +15,6 @@ class TagihanController extends Controller
         protected TagihanService $tagihanService,
     ) {}
 
-    /**
-     * Daftar tagihan mahasiswa.
-     *
-     * Endpoint:  POST /api/tagihan
-     * Body (JSON): { "npm": "...", "periode?": "..." }
-     *
-     * - npm     (required) NPM mahasiswa
-     * - periode (optional) filter tahun akademik, format YYYY1/YYYYY2, contoh: "20231"
-     */
     public function index(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -35,7 +27,7 @@ class TagihanController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422);
+            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
         $npm     = $request->json('npm');
@@ -50,16 +42,10 @@ class TagihanController extends Controller
                 $tagihan->map(fn ($t) => $this->tagihanService->formatTagihan($t))
             );
         } catch (\Throwable $e) {
-            return ApiResponse::error('Gagal mengambil data tagihan', null, 500);
+            return ApiResponse::error('Gagal mengambil data tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
 
-    /**
-     * Ringkasan tagihan mahasiswa.
-     *
-     * Endpoint:  POST /api/tagihan/summary
-     * Body (JSON): { "npm": "...", "periode?": "..." }
-     */
     public function summary(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -72,7 +58,7 @@ class TagihanController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422);
+            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
         $npm     = $request->json('npm');
@@ -81,16 +67,10 @@ class TagihanController extends Controller
         try {
             return ApiResponse::success($this->tagihanService->getSummary($npm, $periode));
         } catch (\Throwable $e) {
-            return ApiResponse::error('Gagal mengambil ringkasan tagihan', null, 500);
+            return ApiResponse::error('Gagal mengambil ringkasan tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
 
-    /**
-     * Detail satu tagihan (termasuk pembayaran).
-     *
-     * Endpoint:  POST /api/tagihan/detail
-     * Body (JSON): { "id_record_tagihan": "2025-00001" }
-     */
     public function detail(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -100,7 +80,7 @@ class TagihanController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422);
+            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
         $idRecord = $request->json('id_record_tagihan');
@@ -109,7 +89,7 @@ class TagihanController extends Controller
             $tagihan = $this->tagihanService->getByIdRecord($idRecord);
 
             if (! $tagihan) {
-                return ApiResponse::error('Tagihan tidak ditemukan.', null, 404);
+                return ApiResponse::error('Tagihan tidak ditemukan.', null, 404, ErrorCode::DATA_NOT_FOUND);
             }
 
             return ApiResponse::success([
@@ -119,16 +99,10 @@ class TagihanController extends Controller
                 ),
             ]);
         } catch (\Throwable $e) {
-            return ApiResponse::error('Gagal mengambil detail tagihan', null, 500);
+            return ApiResponse::error('Gagal mengambil detail tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
 
-    /**
-     * Cek status lunas tagihan.
-     *
-     * Endpoint:  POST /api/tagihan/cek-lunas
-     * Body (JSON): { "npm": "...", "periode?": "..." }
-     */
     public function cekLunas(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -141,7 +115,7 @@ class TagihanController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422);
+            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
         $npm     = $request->json('npm');
@@ -174,7 +148,7 @@ class TagihanController extends Controller
                 ]),
             ]);
         } catch (\Throwable $e) {
-            return ApiResponse::error('Gagal mengecek status tagihan', null, 500);
+            return ApiResponse::error('Gagal mengecek status tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
 }

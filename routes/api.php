@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\TokenController;
+use App\Http\Controllers\Api\FeederController;
 use App\Http\Controllers\Api\KhsController;
 use App\Http\Controllers\Api\KrsController;
 use App\Http\Controllers\Api\PegawaiController;
@@ -59,5 +60,9 @@ Route::middleware('jwt.auth')->group(function () {
 
     Route::prefix('pegawai')->middleware('scope:pegawai:read')->group(function () {
         Route::post('/', [PegawaiController::class, 'index']);
+    });
+
+    Route::prefix('feeder')->middleware('scope:feeder:read')->group(function () {
+        Route::post('/cari-by-npm', [FeederController::class, 'cariByNpm']);
     });
 });

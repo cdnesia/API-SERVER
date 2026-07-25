@@ -3,18 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Support\ApiResponse;
+use App\Support\ErrorCode;
 use Closure;
 use Illuminate\Http\Request;
 
-/**
- * Middleware untuk memeriksa apakah API client memiliki scope yang dibutuhkan.
- *
- * Cara pakai di route:
- *   Route::middleware('scope:tagihan:read')->group(...)
- *   Route::middleware('scope:khs:read,krs:read')->group(...)   // butuh salah satu
- *
- * Scope `*` atau `all` pada client berarti akses penuh ke semua endpoint.
- */
 class VerifyScope
 {
     /**
@@ -50,7 +42,7 @@ class VerifyScope
                 'Forbidden. Required scope(s): ' . implode(', ', $scopes),
                 null,
                 403,
-                403001
+                ErrorCode::FORBIDDEN_SCOPE
             );
         }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\AkademikService;
 use App\Support\ApiResponse;
+use App\Support\ErrorCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -16,16 +17,6 @@ class KhsController extends Controller
         protected AkademikService $akademik,
     ) {}
 
-    /**
-     * Cetak Kartu Hasil Studi (KHS) dalam format PDF.
-     *
-     * Endpoint:  POST /api/khs/cetak
-     * Body (JSON): { "npm": "...", "periode?": "...", "view": "inline|download" }
-     *
-     * - npm     (required) NPM mahasiswa
-     * - periode (optional) filter semester tertentu, kosong = semua semester
-     * - view    (optional) "inline" atau "download"
-     */
     public function cetak(Request $request): mixed
     {
         $validator = Validator::make($request->json()->all(), [
@@ -44,6 +35,7 @@ class KhsController extends Controller
                 'Validasi gagal',
                 $validator->errors(),
                 422,
+                ErrorCode::VALIDATION_FAILED,
             );
         }
 
@@ -59,12 +51,12 @@ class KhsController extends Controller
                 'Gagal terhubung ke database. Silakan coba beberapa saat lagi.',
                 null,
                 503,
-                503001,
+                ErrorCode::SERVICE_UNAVAILABLE,
             );
         } catch (\RuntimeException $e) {
-            return ApiResponse::error($e->getMessage(), null, 404);
+            return ApiResponse::error($e->getMessage(), null, 404, ErrorCode::DATA_NOT_FOUND);
         } catch (\Throwable $e) {
-            return ApiResponse::error('Gagal memproses permintaan', null, 500);
+            return ApiResponse::error('Gagal memproses permintaan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
 
         $pdf = Pdf::loadView('pdf.khs', compact('saya', 'krs', 'periode'))

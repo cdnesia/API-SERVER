@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\ApiClient;
 use App\Support\ApiResponse;
+use App\Support\ErrorCode;
 use App\Support\SnapSignature;
 use Firebase\JWT\JWT;
 use Illuminate\Http\JsonResponse;
@@ -30,7 +31,7 @@ class TokenController extends Controller
         $signature = $request->header('X-SIGNATURE');
 
         if (! $timestamp || ! $clientKey || ! $signature) {
-            return ApiResponse::error('X-TIMESTAMP, X-CLIENT-KEY, and X-SIGNATURE headers are required.', null, 400, 400001);
+            return ApiResponse::error('X-TIMESTAMP, X-CLIENT-KEY, and X-SIGNATURE headers are required.', null, 400, ErrorCode::MISSING_HEADERS);
         }
 
         $validator = Validator::make($request->json()->all(), [
@@ -41,23 +42,23 @@ class TokenController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422);
+            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
         if (! SnapSignature::verifyTimestamp($timestamp, (int) config('jwt.timestamp_tolerance'))) {
-            return ApiResponse::error('Invalid or stale X-TIMESTAMP.', null, 401, 401007);
+            return ApiResponse::error('Invalid or stale X-TIMESTAMP.', null, 401, ErrorCode::STALE_TIMESTAMP);
         }
 
         $client = ApiClient::where('client_id', $clientKey)->first();
 
         if (! $client || ! $client->is_active) {
-            return ApiResponse::error('Invalid client.', null, 401, 401001);
+            return ApiResponse::error('Invalid client.', null, 401, ErrorCode::INVALID_CLIENT);
         }
 
         $stringToSign = "{$clientKey}|{$timestamp}";
 
         if (! SnapSignature::verifyAsymmetric($stringToSign, $signature, $client->public_key)) {
-            return ApiResponse::error('Invalid signature.', null, 401, 401008);
+            return ApiResponse::error('Invalid signature.', null, 401, ErrorCode::INVALID_SIGNATURE);
         }
 
         $client->forceFill(['last_used_at' => now()])->save();

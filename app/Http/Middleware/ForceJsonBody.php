@@ -8,11 +8,6 @@ use Illuminate\Http\Request;
 
 class ForceJsonBody
 {
-    /**
-     * Hanya izinkan request dengan Content-Type: application/json.
-     *
-     * Method yang tidak punya body (GET, HEAD, OPTIONS) dilewati.
-     */
     public function handle(Request $request, Closure $next): mixed
     {
         if ($this->hasBody($request)) {
@@ -37,7 +32,6 @@ class ForceJsonBody
                 );
             }
 
-            // Pastikan body bisa di-decode sebagai JSON
             $decoded = json_decode($request->getContent(), true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
@@ -52,9 +46,6 @@ class ForceJsonBody
         return $next($request);
     }
 
-    /**
-     * HTTP method yang lazim membawa request body.
-     */
     protected function hasBody(Request $request): bool
     {
         return in_array(strtoupper($request->method()), ['POST', 'PUT', 'PATCH', 'DELETE'], true);

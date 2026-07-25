@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\TelegramService;
 use App\Support\ApiResponse;
+use App\Support\ErrorCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -15,21 +16,6 @@ class TelegramController extends Controller
         protected TelegramService $telegramService,
     ) {}
 
-    /**
-     * Kirim pesan teks ke Telegram (dengan tombol opsional).
-     *
-     * Endpoint:  POST /api/telegram/send-message
-     * Body (JSON):
-     *   {
-     *     "text": "...",
-     *     "chat_id?": "...",
-     *     "parse_mode?": "HTML|Markdown",
-     *     "inline_keyboard?": [
-     *       [{ "text": "Button 1", "callback_data": "btn1" }],
-     *       [{ "text": "Link", "url": "https://..." }]
-     *     ]
-     *   }
-     */
     public function sendMessage(Request $request): JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -47,7 +33,7 @@ class TelegramController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422);
+            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
         try {
@@ -74,16 +60,11 @@ class TelegramController extends Controller
                 'Gagal mengirim pesan: ' . $e->getMessage(),
                 null,
                 500,
+                ErrorCode::INTERNAL_ERROR,
             );
         }
     }
 
-    /**
-     * Kirim foto ke Telegram.
-     *
-     * Endpoint:  POST /api/telegram/send-photo
-     * Body (JSON): { "photo": "https://... atau file_id", "caption?": "...", "chat_id?": "..." }
-     */
     public function sendPhoto(Request $request): JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -95,7 +76,7 @@ class TelegramController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422);
+            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
         try {
@@ -114,16 +95,11 @@ class TelegramController extends Controller
                 'Gagal mengirim foto: ' . $e->getMessage(),
                 null,
                 500,
+                ErrorCode::INTERNAL_ERROR,
             );
         }
     }
 
-    /**
-     * Kirim dokumen ke Telegram.
-     *
-     * Endpoint:  POST /api/telegram/send-document
-     * Body (JSON): { "document": "https://... atau file_id", "caption?": "...", "chat_id?": "..." }
-     */
     public function sendDocument(Request $request): JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -135,7 +111,7 @@ class TelegramController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422);
+            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
         try {
@@ -154,16 +130,11 @@ class TelegramController extends Controller
                 'Gagal mengirim dokumen: ' . $e->getMessage(),
                 null,
                 500,
+                ErrorCode::INTERNAL_ERROR,
             );
         }
     }
 
-    /**
-     * Broadcast pesan ke banyak chat ID sekaligus.
-     *
-     * Endpoint:  POST /api/telegram/broadcast
-     * Body (JSON): { "text": "...", "chat_ids": ["...", "..."] }
-     */
     public function broadcast(Request $request): JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -178,7 +149,7 @@ class TelegramController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422);
+            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
         try {
@@ -193,6 +164,7 @@ class TelegramController extends Controller
                 'Gagal broadcast: ' . $e->getMessage(),
                 null,
                 500,
+                ErrorCode::INTERNAL_ERROR,
             );
         }
     }
