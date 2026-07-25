@@ -8,12 +8,12 @@ use Illuminate\Http\Client\Response;
 
 class FeederService
 {
-    private $api_url;
-    private $username;
-    private $password;
-    private $timeout;
-    private $retryTimes;
-    private $retrySleep;
+    private string $api_url;
+    private string $username;
+    private string $password;
+    private int $timeout;
+    private int $retryTimes;
+    private int $retrySleep;
 
     public function __construct()
     {
@@ -242,69 +242,6 @@ class FeederService
                 'error_desc' => 'HTTP request error: ' . $e->getMessage(),
                 'data' => null
             ];
-        }
-    }
-
-    /**
-     * Get kurikulum data
-     *
-     * @param string|null $prodi
-     * @param int|null $semester
-     * @return array
-     */
-    public function getKurikulum($prodi = null, $semester = null)
-    {
-        if (!$prodi || !$semester) {
-            return [];
-        }
-
-        $kurikulumMap = $this->getKurikulumMap();
-        $tahunKurikulum = $kurikulumMap[$prodi][$semester] ?? null;
-
-        if (!$tahunKurikulum) {
-            return [];
-        }
-
-        $token = $this->getToken();
-
-        if (!$token) {
-            return [];
-        }
-
-        $data = [
-            "act" => "GetMatkulKurikulum",
-            "filter" => "id_semester='$tahunKurikulum' AND semester='$semester' AND nama_program_studi='$prodi'",
-            "order" => "",
-            "limit" => 0,
-            "offset" => 0
-        ];
-
-        $postData = array_merge(['token' => $token], $data);
-
-        try {
-            /** @var Response $response */
-            $response = Http::asJson()
-                ->timeout($this->timeout)
-                ->post($this->api_url, $postData);
-
-            if (!$response->successful()) {
-                Log::error('NeofeederService: Gagal get kurikulum', [
-                    'status' => $response->status(),
-                    'prodi' => $prodi,
-                    'semester' => $semester
-                ]);
-                return [];
-            }
-
-            $responseBody = $response->json();
-            return $responseBody['data'] ?? [];
-        } catch (\Exception $e) {
-            Log::error('NeofeederService: Exception pada getKurikulum', [
-                'message' => $e->getMessage(),
-                'prodi' => $prodi,
-                'semester' => $semester
-            ]);
-            return [];
         }
     }
 }
