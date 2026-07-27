@@ -252,4 +252,25 @@ class FeederController extends Controller
 
         return ApiResponse::success($result, 'Data mahasiswa ditemukan.');
     }
+    public function dataWilayah(Request $request): JsonResponse
+    {
+        $result = $this->feeder->getData([
+            'act'    => 'GetWilayah',
+            'filter' => '',
+            'order'  => '',
+            'limit'  => 0,
+            'offset' => 0,
+        ]);
+
+        if (($result['error_code'] ?? 1) !== 0) {
+            return ApiResponse::error(
+                $result['error_desc'] ?? 'Gagal mengambil data mahasiswa.',
+                null,
+                500,
+                $result['error_code'] ?? ErrorCode::EXTERNAL_API_ERROR,
+            );
+        }
+
+        return ApiResponse::success($result, 'Data mahasiswa ditemukan.');
+    }
 }

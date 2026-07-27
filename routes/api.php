@@ -67,5 +67,6 @@ Route::middleware('jwt.auth')->group(function () {
         Route::post('/mahasiswa-akm', [FeederController::class, 'mahasiswaAkm']);
         Route::post('/mahasiswa-keluar', [FeederController::class, 'mahasiswaKeluar']);
         Route::post('/mahasiswa-masuk', [FeederController::class, 'mahasiswaMasuk']);
+        Route::post('/wilayah', [FeederController::class, 'dataWilayah']);
     });
 });
