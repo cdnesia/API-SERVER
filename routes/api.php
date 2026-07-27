@@ -64,5 +64,8 @@ Route::middleware('jwt.auth')->group(function () {
 
     Route::prefix('feeder')->middleware('scope:feeder:read')->group(function () {
         Route::post('/cari-by-npm', [FeederController::class, 'cariByNpm']);
+        Route::post('/mahasiswa-akm', [FeederController::class, 'mahasiswaAkm']);
+        Route::post('/mahasiswa-keluar', [FeederController::class, 'mahasiswaKeluar']);
+        Route::post('/mahasiswa-masuk', [FeederController::class, 'mahasiswaMasuk']);
     });
 });

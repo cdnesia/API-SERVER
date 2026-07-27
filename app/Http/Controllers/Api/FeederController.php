@@ -89,8 +89,167 @@ class FeederController extends Controller
         $biodatamahasiswa = $biodata['data'][0] ?? [];
 
         $data = array_merge($mahasiswa, $biodatamahasiswa);
-        $data = array_filter($data, fn ($key) => !str_starts_with($key, 'id_'), ARRAY_FILTER_USE_KEY);
+        $data = array_filter($data, fn($key) => !str_starts_with($key, 'id_'), ARRAY_FILTER_USE_KEY);
 
         return ApiResponse::success($data, 'Data mahasiswa ditemukan.');
+    }
+    public function mahasiswaAkm(Request $request): JsonResponse
+    {
+        $validator = validator($request->all(), [
+            'id_prodi'   => 'nullable|string|max:50',
+            'periode'    => 'nullable|array',
+            'periode.*'  => 'string|max:20',
+        ], [
+            'id_prodi.max'    => 'ID Prodi maksimal 50 karakter.',
+            'periode.array'   => 'Periode harus berupa array.',
+            'periode.*.max'   => 'Periode maksimal 20 karakter.',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::error(
+                $validator->errors()->first(),
+                $validator->errors()->toArray(),
+                422,
+                ErrorCode::VALIDATION_FAILED,
+            );
+        }
+
+        $idProdi  = $request->input('id_prodi');
+        $periode  = $request->input('periode', []);
+
+        $conditions = [];
+        if ($idProdi) {
+            $conditions[] = "id_prodi='" . addslashes($idProdi) . "'";
+        }
+        if ($periode) {
+            $periodeList = array_map(fn($p) => "'" . addslashes($p) . "'", $periode);
+            $conditions[] = 'id_semester IN (' . implode(',', $periodeList) . ')';
+        }
+        $filter = implode(' AND ', $conditions);
+
+        $result = $this->feeder->getData([
+            'act'    => 'GetListPerkuliahanMahasiswa',
+            'filter' => $filter,
+            'order'  => '',
+            'limit'  => 0,
+            'offset' => 0,
+        ]);
+
+        if (($result['error_code'] ?? 1) !== 0) {
+            return ApiResponse::error(
+                $result['error_desc'] ?? 'Gagal mengambil data mahasiswa.',
+                null,
+                500,
+                $result['error_code'] ?? ErrorCode::EXTERNAL_API_ERROR,
+            );
+        }
+
+        return ApiResponse::success($result, 'Data mahasiswa ditemukan.');
+    }
+    public function mahasiswaKeluar(Request $request): JsonResponse
+    {
+        $validator = validator($request->all(), [
+            'id_prodi'   => 'nullable|string|max:50',
+            'periode'    => 'nullable|array',
+            'periode.*'  => 'string|max:20',
+        ], [
+            'id_prodi.max'    => 'ID Prodi maksimal 50 karakter.',
+            'periode.array'   => 'Periode harus berupa array.',
+            'periode.*.max'   => 'Periode maksimal 20 karakter.',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::error(
+                $validator->errors()->first(),
+                $validator->errors()->toArray(),
+                422,
+                ErrorCode::VALIDATION_FAILED,
+            );
+        }
+
+        $idProdi  = $request->input('id_prodi');
+        $periode  = $request->input('periode', []);
+
+        $conditions = [];
+        if ($idProdi) {
+            $conditions[] = "id_prodi='" . addslashes($idProdi) . "'";
+        }
+        if ($periode) {
+            $periodeList = array_map(fn($p) => "'" . addslashes($p) . "'", $periode);
+            $conditions[] = 'id_periode_keluar IN (' . implode(',', $periodeList) . ')';
+        }
+        $filter = implode(' AND ', $conditions);
+
+        $result = $this->feeder->getData([
+            'act'    => 'GetListRiwayatPendidikanMahasiswa',
+            'filter' => $filter,
+            'order'  => '',
+            'limit'  => 0,
+            'offset' => 0,
+        ]);
+
+        if (($result['error_code'] ?? 1) !== 0) {
+            return ApiResponse::error(
+                $result['error_desc'] ?? 'Gagal mengambil data mahasiswa.',
+                null,
+                500,
+                $result['error_code'] ?? ErrorCode::EXTERNAL_API_ERROR,
+            );
+        }
+
+        return ApiResponse::success($result, 'Data mahasiswa ditemukan.');
+    }
+    public function mahasiswaMasuk(Request $request): JsonResponse
+    {
+        $validator = validator($request->all(), [
+            'id_prodi'   => 'nullable|string|max:50',
+            'periode'    => 'nullable|array',
+            'periode.*'  => 'string|max:20',
+        ], [
+            'id_prodi.max'    => 'ID Prodi maksimal 50 karakter.',
+            'periode.array'   => 'Periode harus berupa array.',
+            'periode.*.max'   => 'Periode maksimal 20 karakter.',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::error(
+                $validator->errors()->first(),
+                $validator->errors()->toArray(),
+                422,
+                ErrorCode::VALIDATION_FAILED,
+            );
+        }
+
+        $idProdi  = $request->input('id_prodi');
+        $periode  = $request->input('periode', []);
+
+        $conditions = [];
+        if ($idProdi) {
+            $conditions[] = "id_prodi='" . addslashes($idProdi) . "'";
+        }
+        if ($periode) {
+            $periodeList = array_map(fn($p) => "'" . addslashes($p) . "'", $periode);
+            $conditions[] = 'id_periode IN (' . implode(',', $periodeList) . ')';
+        }
+        $filter = implode(' AND ', $conditions);
+
+        $result = $this->feeder->getData([
+            'act'    => 'GetListRiwayatPendidikanMahasiswa',
+            'filter' => $filter,
+            'order'  => '',
+            'limit'  => 0,
+            'offset' => 0,
+        ]);
+
+        if (($result['error_code'] ?? 1) !== 0) {
+            return ApiResponse::error(
+                $result['error_desc'] ?? 'Gagal mengambil data mahasiswa.',
+                null,
+                500,
+                $result['error_code'] ?? ErrorCode::EXTERNAL_API_ERROR,
+            );
+        }
+
+        return ApiResponse::success($result, 'Data mahasiswa ditemukan.');
     }
 }
