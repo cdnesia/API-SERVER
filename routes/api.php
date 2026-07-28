@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\KhsController;
 use App\Http\Controllers\Api\KrsController;
 use App\Http\Controllers\Api\LaporanNilaiController;
 use App\Http\Controllers\Api\PegawaiController;
+use App\Http\Controllers\Api\ProdiController;
 use App\Http\Controllers\Api\TagihanController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Support\ApiResponse;
@@ -70,6 +71,10 @@ Route::middleware('jwt.auth')->group(function () {
 
     Route::prefix('pegawai')->middleware('scope:pegawai:read')->group(function () {
         Route::post('/', [PegawaiController::class, 'index']);
+    });
+
+    Route::prefix('prodi')->middleware('scope:prodi:read')->group(function () {
+        Route::post('/', [ProdiController::class, 'index']);
     });
 
     Route::prefix('feeder')->middleware('scope:feeder:read')->group(function () {
