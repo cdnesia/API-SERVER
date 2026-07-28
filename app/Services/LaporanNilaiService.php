@@ -2,18 +2,17 @@
 
 namespace App\Services;
 
-use App\Models\JadwalPerkuliahan;
 use App\Models\KRS;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class LaporanNilaiService
 {
     /**
      * Ambil laporan input nilai per tahun akademik.
      *
-     * Menampilkan daftar mata kuliah yang dibuka pada tahun akademik tertentu,
-     * beserta nama dosen pengajar, jumlah mahasiswa peserta, dan progres input nilai.
+     * Query dari sisi KRS (pakai kode_tahun_akademik), lalu dikelompokkan
+     * per jadwal.  Pendekatan ini memastikan data tetap muncul meskipun
+     * kolom tahun_akademik di tabel jadwal masih 0 (belum disinkronkan).
      *
      * @param  string       $tahunAkademik  Kode tahun akademik, contoh: "20241"
      * @param  string|null  $kodeProdi      Filter opsional kode program studi
@@ -21,41 +20,39 @@ class LaporanNilaiService
      */
     public function getLaporan(string $tahunAkademik, ?string $kodeProdi = null): array
     {
-        // Ambil semua jadwal yang aktif pada tahun akademik tersebut
-        $jadwalQuery = JadwalPerkuliahan::with(['mataKuliah', 'dosen', 'krs.mahasiswa'])
-            ->where('tahun_akademik', $tahunAkademik);
+        // Query dari sisi KRS → filter by kode_tahun_akademik
+        $krsQuery = KRS::with(['jadwal.mataKuliah', 'jadwal.dosen', 'mahasiswa'])
+            ->where('kode_tahun_akademik', $tahunAkademik)
+            ->whereHas('jadwal', function ($q) use ($kodeProdi) {
+                if ($kodeProdi !== null) {
+                    $q->where('kode_program_studi', $kodeProdi);
+                }
+            });
 
-        if ($kodeProdi !== null) {
-            $jadwalQuery->where('kode_program_studi', $kodeProdi);
-        }
+        $krsItems = $krsQuery->get();
 
-        $jadwals = $jadwalQuery->get();
-
-        if ($jadwals->isEmpty()) {
+        if ($krsItems->isEmpty()) {
             throw new \RuntimeException(
-                'Data jadwal perkuliahan tidak ditemukan untuk tahun akademik ' . $tahunAkademik
+                'Data KRS tidak ditemukan untuk tahun akademik ' . $tahunAkademik
                 . ($kodeProdi ? ' dan program studi ' . $kodeProdi : '') . '.'
             );
         }
 
-        $laporan = $jadwals->map(function (JadwalPerkuliahan $jadwal) {
-            $mataKuliah = $jadwal->mataKuliah;
-            $dosen      = $jadwal->dosen;
-            $allKrs     = $jadwal->krs;
+        // Kelompokkan per jadwal_id
+        $grouped = $krsItems->groupBy('jadwal_id');
 
-            // Mahasiswa yang terdaftar di KRS untuk jadwal ini
-            $totalMahasiswa  = $allKrs->count();
+        $laporan = $grouped->map(function (Collection $krsGroup) {
+            $first    = $krsGroup->first();
+            $jadwal   = $first->jadwal;
+            $mk       = $jadwal?->mataKuliah;
+            $dosen    = $jadwal?->dosen;
 
-            // Mahasiswa yang sudah mendapat nilai (nilai_angka tidak null)
-            $sudahDinilai = $allKrs->filter(function (KRS $krs) {
-                return $krs->nilai_angka !== null;
-            });
+            $totalMahasiswa    = $krsGroup->count();
+            $sudahDinilai      = $krsGroup->whereNotNull('nilai_angka');
+            $jumlahSudah       = $sudahDinilai->count();
+            $jumlahBelum       = $totalMahasiswa - $jumlahSudah;
 
-            $jumlahSudahDinilai = $sudahDinilai->count();
-            $jumlahBelumDinilai = $totalMahasiswa - $jumlahSudahDinilai;
-
-            // Semua mahasiswa yang mengontrak (gabungan sudah + belum dinilai)
-            $daftarMahasiswa = $allKrs
+            $daftarMahasiswa = $krsGroup
                 ->map(fn (KRS $krs) => [
                     'npm'            => $krs->npm,
                     'nama_mahasiswa' => $krs->mahasiswa?->nama_mahasiswa ?? '',
@@ -66,28 +63,27 @@ class LaporanNilaiService
                 ->values()
                 ->toArray();
 
-            // Status: "lengkap" bila semua sudah dinilai, "sebagian", "belum" bila 0
             $status = match (true) {
-                $totalMahasiswa === 0                     => 'tidak_ada_peserta',
-                $jumlahBelumDinilai === 0                 => 'lengkap',
-                $jumlahSudahDinilai === 0                 => 'belum',
-                default                                    => 'sebagian',
+                $totalMahasiswa === 0     => 'tidak_ada_peserta',
+                $jumlahBelum === 0        => 'lengkap',
+                $jumlahSudah === 0        => 'belum',
+                default                   => 'sebagian',
             };
 
             return [
-                'jadwal_id'              => $jadwal->id,
-                'kelompok'               => $jadwal->kelompok ?? '',
-                'kode_mata_kuliah'       => $mataKuliah->kode_mata_kuliah ?? '',
-                'nama_mata_kuliah'       => $mataKuliah->nama_mata_kuliah_idn ?? '',
-                'sks_mata_kuliah'        => (int) ($mataKuliah->sks_mata_kuliah ?? 0),
-                'semester'               => (int) ($mataKuliah->semester ?? 0),
+                'jadwal_id'              => $first->jadwal_id,
+                'kelompok'               => $jadwal?->kelompok ?? '',
+                'kode_mata_kuliah'       => $mk->kode_mata_kuliah ?? '',
+                'nama_mata_kuliah'       => $mk->nama_mata_kuliah_idn ?? '',
+                'sks_mata_kuliah'        => (int) ($mk->sks_mata_kuliah ?? 0),
+                'semester'               => (int) ($mk->semester ?? 0),
                 'dosen_id'               => $dosen->id ?? null,
                 'nama_dosen'             => $dosen->nama_lengkap ?? '',
                 'nidn_dosen'             => $dosen->nidn ?? '',
-                'kode_program_studi'     => $jadwal->kode_program_studi,
+                'kode_program_studi'     => $jadwal?->kode_program_studi ?? '',
                 'total_mahasiswa'        => $totalMahasiswa,
-                'jumlah_sudah_dinilai'   => $jumlahSudahDinilai,
-                'jumlah_belum_dinilai'   => $jumlahBelumDinilai,
+                'jumlah_sudah_dinilai'   => $jumlahSudah,
+                'jumlah_belum_dinilai'   => $jumlahBelum,
                 'status_input_nilai'     => $status,
                 'mahasiswa'              => $daftarMahasiswa,
             ];
