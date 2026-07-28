@@ -8,6 +8,7 @@ use App\Support\ApiResponse;
 use App\Support\ErrorCode;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class LaporanNilaiController extends Controller
@@ -48,6 +49,8 @@ class LaporanNilaiController extends Controller
         try {
             $laporan = $this->laporanNilai->getLaporan($tahunAkademik, $kodeProdi);
         } catch (QueryException $e) {
+            Log::error('LaporanNilaiController: gagal terhubung ke database.', ['tahun_akademik' => $tahunAkademik, 'message' => $e->getMessage()]);
+
             return ApiResponse::error(
                 'Gagal terhubung ke database. Silakan coba beberapa saat lagi.',
                 null,
@@ -57,6 +60,8 @@ class LaporanNilaiController extends Controller
         } catch (\RuntimeException $e) {
             return ApiResponse::error($e->getMessage(), null, 404, ErrorCode::DATA_NOT_FOUND);
         } catch (\Throwable $e) {
+            Log::error('LaporanNilaiController: gagal memproses laporan input nilai.', ['tahun_akademik' => $tahunAkademik, 'message' => $e->getMessage()]);
+
             return ApiResponse::error('Gagal memproses permintaan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
 

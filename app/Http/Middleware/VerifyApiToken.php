@@ -17,6 +17,9 @@ use UnexpectedValueException;
 
 class VerifyApiToken
 {
+    /** Cached public key — avoids disk I/O on every request under Octane. */
+    private static ?Key $cachedPublicKey = null;
+
     public function handle(Request $request, Closure $next): mixed
     {
         $token = $request->bearerToken();
@@ -26,8 +29,8 @@ class VerifyApiToken
         }
 
         try {
-            $publicKey = File::get(base_path(config('jwt.public_key_path')));
-            $decoded = JWT::decode($token, new Key($publicKey, config('jwt.algo')));
+            $publicKey = $this->getPublicKey();
+            $decoded = JWT::decode($token, $publicKey);
         } catch (ExpiredException) {
             return ApiResponse::error('Token expired.', null, 401, ErrorCode::TOKEN_EXPIRED);
         } catch (UnexpectedValueException) {
@@ -75,5 +78,18 @@ class VerifyApiToken
         $request->attributes->set('api_scopes', (array) ($decoded->scopes ?? []));
 
         return $next($request);
+    }
+
+    /**
+     * Return the JWT public key, cached in-memory for Octane.
+     */
+    private function getPublicKey(): Key
+    {
+        if (self::$cachedPublicKey === null) {
+            $contents = File::get(base_path(config('jwt.public_key_path')));
+            self::$cachedPublicKey = new Key($contents, config('jwt.algo'));
+        }
+
+        return self::$cachedPublicKey;
     }
 }

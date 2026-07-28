@@ -8,6 +8,7 @@ use App\Support\ApiResponse;
 use App\Support\ErrorCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class TelegramController extends Controller
@@ -56,6 +57,8 @@ class TelegramController extends Controller
                 'chat'       => $result['result']['chat'] ?? null,
             ], 'Pesan berhasil dikirim.');
         } catch (\Throwable $e) {
+            Log::error('TelegramController: gagal mengirim pesan.', ['message' => $e->getMessage()]);
+
             return ApiResponse::error(
                 'Gagal mengirim pesan: ' . $e->getMessage(),
                 null,
@@ -91,6 +94,8 @@ class TelegramController extends Controller
                 'chat'       => $result['result']['chat'] ?? null,
             ], 'Foto berhasil dikirim.');
         } catch (\Throwable $e) {
+            Log::error('TelegramController: gagal mengirim foto.', ['message' => $e->getMessage()]);
+
             return ApiResponse::error(
                 'Gagal mengirim foto: ' . $e->getMessage(),
                 null,
@@ -126,6 +131,8 @@ class TelegramController extends Controller
                 'chat'       => $result['result']['chat'] ?? null,
             ], 'Dokumen berhasil dikirim.');
         } catch (\Throwable $e) {
+            Log::error('TelegramController: gagal mengirim dokumen.', ['message' => $e->getMessage()]);
+
             return ApiResponse::error(
                 'Gagal mengirim dokumen: ' . $e->getMessage(),
                 null,
@@ -160,6 +167,8 @@ class TelegramController extends Controller
 
             return ApiResponse::success($result, 'Broadcast selesai.');
         } catch (\Throwable $e) {
+            Log::error('TelegramController: gagal broadcast.', ['message' => $e->getMessage()]);
+
             return ApiResponse::error(
                 'Gagal broadcast: ' . $e->getMessage(),
                 null,

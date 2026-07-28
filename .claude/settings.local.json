@@ -5,7 +5,10 @@
       "Read(//tmp/**)",
       "Bash(rm -f storage/app/api-clients/preview*.txt)",
       "Bash(php artisan *)",
-      "Bash(php -l app/Console/Commands/ApiClientCreate.php)"
+      "Bash(php -l app/Console/Commands/ApiClientCreate.php)",
+      "Bash(grep -rn \"static \\\\$\" app/)",
+      "Bash(APP_ENV=testing DB_CONNECTION=sqlite DB_DATABASE=\":memory:\" php artisan tinker --execute=\"DB::connection\\('sqlite'\\)->select\\('select 1 as x'\\);\")",
+      "Bash(APP_ENV=testing DB_CONNECTION=sqlite DB_DATABASE=\":memory:\" php artisan tinker --execute=\"var_dump\\(DB::connection\\('sqlite'\\)->select\\('select 1 as x'\\)\\);\")"
     ],
     "additionalDirectories": [
       "/tmp"

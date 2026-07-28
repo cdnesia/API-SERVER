@@ -9,6 +9,7 @@ use App\Support\ErrorCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class KrsController extends Controller
@@ -47,6 +48,8 @@ class KrsController extends Controller
             $saya = $this->akademik->getStudent($npm);
             $krs  = $this->akademik->getKrs($npm, $periode);
         } catch (QueryException $e) {
+            Log::error('KrsController: gagal terhubung ke database.', ['npm' => $npm, 'message' => $e->getMessage()]);
+
             return ApiResponse::error(
                 'Gagal terhubung ke database. Silakan coba beberapa saat lagi.',
                 null,
@@ -56,6 +59,8 @@ class KrsController extends Controller
         } catch (\RuntimeException $e) {
             return ApiResponse::error($e->getMessage(), null, 404, ErrorCode::DATA_NOT_FOUND);
         } catch (\Throwable $e) {
+            Log::error('KrsController: gagal memproses permintaan cetak KRS.', ['npm' => $npm, 'message' => $e->getMessage()]);
+
             return ApiResponse::error('Gagal memproses permintaan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
 

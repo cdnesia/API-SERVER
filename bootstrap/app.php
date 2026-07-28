@@ -9,6 +9,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -86,6 +87,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // ── Database Connection Errors ──────────────────────────
         $exceptions->render(function (PDOException $e, Request $request) {
             if ($request->is('api', 'api/*')) {
+                Log::critical('Database connection error (PDOException).', [
+                    'message' => $e->getMessage(),
+                    'path'    => $request->path(),
+                ]);
+
                 return ApiResponse::error(
                     message: 'Gagal terhubung ke database. Silakan coba beberapa saat lagi.',
                     code: 503,
@@ -110,12 +116,22 @@ return Application::configure(basePath: dirname(__DIR__))
                 || str_contains(strtolower($message), 'server has gone away')
                 || str_contains(strtolower($message), 'too many connections')
             ) {
+                Log::critical('Database connection error (QueryException).', [
+                    'message' => $message,
+                    'path'    => $request->path(),
+                ]);
+
                 return ApiResponse::error(
                     message: 'Gagal terhubung ke database. Silakan coba beberapa saat lagi.',
                     code: 503,
                     errorCode: 503001,
                 );
             }
+
+            Log::error('Database query error.', [
+                'message' => $e->getMessage(),
+                'path'    => $request->path(),
+            ]);
 
             return ApiResponse::error(
                 message: config('app.debug')
@@ -133,6 +149,14 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $code = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500;
+
+            if ($code >= 500) {
+                Log::error('Unhandled exception on API request.', [
+                    'exception' => get_class($e),
+                    'message'   => $e->getMessage(),
+                    'path'      => $request->path(),
+                ]);
+            }
 
             return ApiResponse::error(
                 message: config('app.debug') ? $e->getMessage() : 'Server Error.',

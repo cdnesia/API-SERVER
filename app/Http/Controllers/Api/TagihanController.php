@@ -7,6 +7,7 @@ use App\Services\TagihanService;
 use App\Support\ApiResponse;
 use App\Support\ErrorCode;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class TagihanController extends Controller
@@ -42,6 +43,8 @@ class TagihanController extends Controller
                 $tagihan->map(fn ($t) => $this->tagihanService->formatTagihan($t))
             );
         } catch (\Throwable $e) {
+            Log::error('TagihanController: gagal mengambil data tagihan.', ['npm' => $npm, 'message' => $e->getMessage()]);
+
             return ApiResponse::error('Gagal mengambil data tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
@@ -67,6 +70,8 @@ class TagihanController extends Controller
         try {
             return ApiResponse::success($this->tagihanService->getSummary($npm, $periode));
         } catch (\Throwable $e) {
+            Log::error('TagihanController: gagal mengambil ringkasan tagihan.', ['npm' => $npm, 'message' => $e->getMessage()]);
+
             return ApiResponse::error('Gagal mengambil ringkasan tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
@@ -99,6 +104,8 @@ class TagihanController extends Controller
                 ),
             ]);
         } catch (\Throwable $e) {
+            Log::error('TagihanController: gagal mengambil detail tagihan.', ['id_record_tagihan' => $idRecord, 'message' => $e->getMessage()]);
+
             return ApiResponse::error('Gagal mengambil detail tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
@@ -148,6 +155,8 @@ class TagihanController extends Controller
                 ]),
             ]);
         } catch (\Throwable $e) {
+            Log::error('TagihanController: gagal mengecek status tagihan.', ['npm' => $npm, 'message' => $e->getMessage()]);
+
             return ApiResponse::error('Gagal mengecek status tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
@@ -194,6 +203,8 @@ class TagihanController extends Controller
                 'data'           => $grouped,
             ]);
         } catch (\Throwable $e) {
+            Log::error('TagihanController: gagal mengambil data tagihan massal.', ['npms' => $npms, 'message' => $e->getMessage()]);
+
             return ApiResponse::error('Gagal mengambil data tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
@@ -254,6 +265,8 @@ class TagihanController extends Controller
                 'data'    => $this->tagihanService->formatTagihan($tagihan),
             ]);
         } catch (\Throwable $e) {
+            Log::error('TagihanController: gagal memperbarui tagihan.', ['nomor_tagihan' => $request->json('nomor_tagihan'), 'message' => $e->getMessage()]);
+
             return ApiResponse::error('Gagal memperbarui tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
@@ -297,6 +310,8 @@ class TagihanController extends Controller
                 'nomor_tagihan'  => $tagihan->nomor_tagihan,
             ]);
         } catch (\Throwable $e) {
+            Log::error('TagihanController: gagal membuat tagihan PMB.', ['npm' => $request->json('npm'), 'message' => $e->getMessage()]);
+
             return ApiResponse::error('Gagal membuat tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
