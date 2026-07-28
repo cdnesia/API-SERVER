@@ -2,120 +2,207 @@
 
 namespace App\Services;
 
-use App\Models\KRS;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class LaporanNilaiService
 {
     /**
-     * Ambil laporan input nilai per tahun akademik.
+     * Laporan input nilai — jadwal sebagai acuan.
      *
-     * Query dari sisi KRS (pakai kode_tahun_akademik), lalu dikelompokkan
-     * per jadwal.  Pendekatan ini memastikan data tetap muncul meskipun
-     * kolom tahun_akademik di tabel jadwal masih 0 (belum disinkronkan).
-     *
-     * @param  string       $tahunAkademik  Kode tahun akademik, contoh: "20241"
-     * @param  string|null  $kodeProdi      Filter opsional kode program studi
-     * @return array
+     *   - Mulai dari jadwal perkuliahan dengan TA dan prodi yang diminta.
+     *   - KRS dijembatani lewat jadwal lama (TA=0) dengan mata_kuliah_id
+     *     yang sama (karena KRS terhubung ke jadwal_id yang TA-nya masih 0).
+     *   - Nama dosen langsung dari jadwal (dosen_id > 0).
      */
     public function getLaporan(string $tahunAkademik, ?string $kodeProdi = null): array
     {
-        // Query dari sisi KRS → filter by kode_tahun_akademik
-        $krsQuery = KRS::with(['jadwal.mataKuliah', 'jadwal.dosen', 'mahasiswa'])
-            ->where('kode_tahun_akademik', $tahunAkademik)
-            ->whereHas('jadwal', function ($q) use ($kodeProdi) {
-                if ($kodeProdi !== null) {
-                    $q->where('kode_program_studi', $kodeProdi);
-                }
-            });
+        $prodiFilter = $kodeProdi ? "AND j.kode_program_studi = '{$kodeProdi}'" : '';
 
-        $krsItems = $krsQuery->get();
+        // ---------- Ringkasan ----------
+        $ringkasanRow = DB::connection('db_siade')->selectOne("
+            SELECT
+                COUNT(DISTINCT j.id)   AS total_jadwal,
+                COUNT(k.id)            AS total_mahasiswa,
+                SUM(CASE WHEN k.nilai_angka IS NOT NULL THEN 1 ELSE 0 END) AS total_sudah_dinilai,
+                SUM(CASE WHEN k.nilai_angka IS NULL     THEN 1 ELSE 0 END) AS total_belum_dinilai
+            FROM tbl_jadwal_perkuliahan j
+            LEFT JOIN tbl_jadwal_perkuliahan j0
+                ON  j0.mata_kuliah_id      = j.mata_kuliah_id
+                AND j0.kode_program_studi  = j.kode_program_studi
+                AND j0.tahun_akademik      = '0'
+            LEFT JOIN tbl_mahasiswa_krs k
+                ON  k.jadwal_id            = j0.id
+                AND k.kode_tahun_akademik  = ?
+            WHERE j.tahun_akademik = ?
+              AND j.dosen_id > 0
+              {$prodiFilter}
+        ", [$tahunAkademik, $tahunAkademik]);
 
-        if ($krsItems->isEmpty()) {
+        if (! $ringkasanRow || $ringkasanRow->total_jadwal == 0) {
             throw new \RuntimeException(
-                'Data KRS tidak ditemukan untuk tahun akademik ' . $tahunAkademik
+                'Data jadwal tidak ditemukan untuk tahun akademik ' . $tahunAkademik
                 . ($kodeProdi ? ' dan program studi ' . $kodeProdi : '') . '.'
             );
         }
 
-        // Kelompokkan per jadwal_id
-        $grouped = $krsItems->groupBy('jadwal_id');
+        $totalJadwal    = (int) $ringkasanRow->total_jadwal;
+        $totalMahasiswa = (int) ($ringkasanRow->total_mahasiswa ?? 0);
+        $totalSudah     = (int) ($ringkasanRow->total_sudah_dinilai ?? 0);
+        $totalBelum     = (int) ($ringkasanRow->total_belum_dinilai ?? 0);
 
-        $laporan = $grouped->map(function (Collection $krsGroup) {
-            $first    = $krsGroup->first();
-            $jadwal   = $first->jadwal;
-            $mk       = $jadwal?->mataKuliah;
-            $dosen    = $jadwal?->dosen;
+        // ---------- Rincian per jadwal ----------
+        $rincianRows = DB::connection('db_siade')->select("
+            SELECT
+                j.id            AS jadwal_id,
+                j.kelompok,
+                j.kode_program_studi,
+                j.dosen_id,
+                mk.kode_mata_kuliah,
+                mk.nama_mata_kuliah_idn AS nama_mata_kuliah,
+                mk.sks_mata_kuliah,
+                mk.semester,
+                COUNT(k.id)     AS total_mahasiswa,
+                SUM(CASE WHEN k.nilai_angka IS NOT NULL THEN 1 ELSE 0 END) AS sudah_dinilai,
+                SUM(CASE WHEN k.nilai_angka IS NULL     THEN 1 ELSE 0 END) AS belum_dinilai
+            FROM tbl_jadwal_perkuliahan j
+            LEFT JOIN master_kurikulum_matakuliah mk
+                ON mk.id = j.mata_kuliah_id
+            LEFT JOIN tbl_jadwal_perkuliahan j0
+                ON  j0.mata_kuliah_id      = j.mata_kuliah_id
+                AND j0.kode_program_studi  = j.kode_program_studi
+                AND j0.tahun_akademik      = '0'
+            LEFT JOIN tbl_mahasiswa_krs k
+                ON  k.jadwal_id            = j0.id
+                AND k.kode_tahun_akademik  = ?
+            WHERE j.tahun_akademik = ?
+              AND j.dosen_id > 0
+              {$prodiFilter}
+            GROUP BY j.id, j.kelompok, j.kode_program_studi, j.dosen_id,
+                     mk.kode_mata_kuliah, mk.nama_mata_kuliah_idn,
+                     mk.sks_mata_kuliah, mk.semester
+            ORDER BY mk.semester, mk.nama_mata_kuliah_idn, j.kelompok
+        ", [$tahunAkademik, $tahunAkademik]);
 
-            $totalMahasiswa    = $krsGroup->count();
-            $sudahDinilai      = $krsGroup->whereNotNull('nilai_angka');
-            $jumlahSudah       = $sudahDinilai->count();
-            $jumlahBelum       = $totalMahasiswa - $jumlahSudah;
+        // ---------- Ambil nama dosen ----------
+        $dosenIds = array_unique(array_column($rincianRows, 'dosen_id'));
+        $pegawai = DB::connection('db_siade_old')
+            ->table('pegawai')
+            ->whereIn('id', $dosenIds)
+            ->select('id', 'nama_lengkap', 'nidn')
+            ->get()
+            ->keyBy('id');
 
-            $daftarMahasiswa = $krsGroup
-                ->map(fn (KRS $krs) => [
-                    'npm'            => $krs->npm,
-                    'nama_mahasiswa' => $krs->mahasiswa?->nama_mahasiswa ?? '',
-                    'nilai_angka'    => $krs->nilai_angka !== null ? (float) $krs->nilai_angka : null,
-                    'nilai_huruf'    => $krs->nilai_huruf ?? null,
-                    'nilai_bobot'    => $krs->nilai_bobot !== null ? (float) $krs->nilai_bobot : null,
-                ])
-                ->values()
-                ->toArray();
+        // ---------- Ambil detail mahasiswa per jadwal ----------
+        $mahasiswaByJadwal = $this->loadMahasiswa($tahunAkademik, $kodeProdi);
+
+        // ---------- Gabung ----------
+        $rincian = [];
+        $jl = $js = $jb = $jk = 0; // jumlah lengkap, sebagian, belum, kosong
+
+        foreach ($rincianRows as $row) {
+            $totalMhs = (int) $row->total_mahasiswa;
+            $sudah    = (int) $row->sudah_dinilai;
+            $belum    = (int) $row->belum_dinilai;
+            $dosen    = $pegawai->get($row->dosen_id);
 
             $status = match (true) {
-                $totalMahasiswa === 0     => 'tidak_ada_peserta',
-                $jumlahBelum === 0        => 'lengkap',
-                $jumlahSudah === 0        => 'belum',
-                default                   => 'sebagian',
+                $totalMhs === 0   => 'tidak_ada_peserta',
+                $belum === 0      => 'lengkap',
+                $sudah === 0      => 'belum',
+                default           => 'sebagian',
             };
 
-            return [
-                'jadwal_id'              => $first->jadwal_id,
-                'kelompok'               => $jadwal?->kelompok ?? '',
-                'kode_mata_kuliah'       => $mk->kode_mata_kuliah ?? '',
-                'nama_mata_kuliah'       => $mk->nama_mata_kuliah_idn ?? '',
-                'sks_mata_kuliah'        => (int) ($mk->sks_mata_kuliah ?? 0),
-                'semester'               => (int) ($mk->semester ?? 0),
-                'dosen_id'               => $dosen->id ?? null,
-                'nama_dosen'             => $dosen->nama_lengkap ?? '',
-                'nidn_dosen'             => $dosen->nidn ?? '',
-                'kode_program_studi'     => $jadwal?->kode_program_studi ?? '',
-                'total_mahasiswa'        => $totalMahasiswa,
-                'jumlah_sudah_dinilai'   => $jumlahSudah,
-                'jumlah_belum_dinilai'   => $jumlahBelum,
-                'status_input_nilai'     => $status,
-                'mahasiswa'              => $daftarMahasiswa,
-            ];
-        });
+            match ($status) {
+                'lengkap'             => $jl++,
+                'sebagian'            => $js++,
+                'belum'               => $jb++,
+                'tidak_ada_peserta'   => $jk++,
+                default               => null,
+            };
 
-        // Hitung ringkasan
-        $totalJadwal        = $laporan->count();
-        $totalMahasiswa     = $laporan->sum('total_mahasiswa');
-        $totalSudahDinilai  = $laporan->sum('jumlah_sudah_dinilai');
-        $totalBelumDinilai  = $laporan->sum('jumlah_belum_dinilai');
-        $totalLengkap       = $laporan->where('status_input_nilai', 'lengkap')->count();
-        $totalSebagian      = $laporan->where('status_input_nilai', 'sebagian')->count();
-        $totalBelum         = $laporan->where('status_input_nilai', 'belum')->count();
-        $totalTanpaPeserta  = $laporan->where('status_input_nilai', 'tidak_ada_peserta')->count();
+            $rincian[] = [
+                'jadwal_id'            => (int) $row->jadwal_id,
+                'kelompok'             => $row->kelompok ?? '',
+                'kode_mata_kuliah'     => $row->kode_mata_kuliah ?? '',
+                'nama_mata_kuliah'     => $row->nama_mata_kuliah ?? '',
+                'sks_mata_kuliah'      => (int) ($row->sks_mata_kuliah ?? 0),
+                'semester'             => (int) ($row->semester ?? 0),
+                'dosen_id'             => (int) $row->dosen_id,
+                'nama_dosen'           => $dosen->nama_lengkap ?? '',
+                'nidn_dosen'           => $dosen->nidn ?? '',
+                'kode_program_studi'   => $row->kode_program_studi ?? '',
+                'total_mahasiswa'      => $totalMhs,
+                'jumlah_sudah_dinilai' => $sudah,
+                'jumlah_belum_dinilai' => $belum,
+                'status_input_nilai'   => $status,
+                'mahasiswa'            => $mahasiswaByJadwal[$row->jadwal_id] ?? [],
+            ];
+        }
 
         return [
-            'tahun_akademik'        => $tahunAkademik,
-            'kode_program_studi'    => $kodeProdi,
-            'ringkasan'             => [
+            'tahun_akademik'     => $tahunAkademik,
+            'kode_program_studi' => $kodeProdi,
+            'ringkasan'          => [
                 'total_jadwal'             => $totalJadwal,
                 'total_mahasiswa'          => $totalMahasiswa,
-                'total_sudah_dinilai'      => $totalSudahDinilai,
-                'total_belum_dinilai'      => $totalBelumDinilai,
+                'total_sudah_dinilai'      => $totalSudah,
+                'total_belum_dinilai'      => $totalBelum,
                 'persentase_input'         => $totalMahasiswa > 0
-                    ? round(($totalSudahDinilai / $totalMahasiswa) * 100, 2)
+                    ? round(($totalSudah / $totalMahasiswa) * 100, 2)
                     : 0,
-                'jumlah_lengkap'           => $totalLengkap,
-                'jumlah_sebagian'          => $totalSebagian,
-                'jumlah_belum'             => $totalBelum,
-                'jumlah_tidak_ada_peserta' => $totalTanpaPeserta,
+                'jumlah_lengkap'           => $jl,
+                'jumlah_sebagian'          => $js,
+                'jumlah_belum'             => $jb,
+                'jumlah_tidak_ada_peserta' => $jk,
             ],
-            'rincian'          => $laporan->values()->toArray(),
+            'rincian'            => $rincian,
         ];
+    }
+
+    /**
+     * Ambil daftar mahasiswa (beserta nilai) untuk setiap jadwal.
+     *
+     * @return array<int, array>  jadwal_id → [mahasiswa...]
+     */
+    protected function loadMahasiswa(string $tahunAkademik, ?string $kodeProdi): array
+    {
+        $prodiFilter = $kodeProdi ? "AND j20232.kode_program_studi = '{$kodeProdi}'" : '';
+
+        $rows = DB::connection('db_siade')->select("
+            SELECT
+                j20232.id        AS jadwal_id,
+                m.npm,
+                m.nama_mahasiswa,
+                k.nilai_angka,
+                k.nilai_huruf,
+                k.nilai_bobot
+            FROM tbl_jadwal_perkuliahan j20232
+            JOIN tbl_jadwal_perkuliahan j0
+                ON  j0.mata_kuliah_id      = j20232.mata_kuliah_id
+                AND j0.kode_program_studi  = j20232.kode_program_studi
+                AND j0.tahun_akademik      = '0'
+            JOIN tbl_mahasiswa_krs k
+                ON  k.jadwal_id            = j0.id
+                AND k.kode_tahun_akademik  = ?
+            JOIN master_mahasiswa m
+                ON m.npm = k.npm
+            WHERE j20232.tahun_akademik = ?
+              AND j20232.dosen_id > 0
+              {$prodiFilter}
+            ORDER BY m.nama_mahasiswa
+        ", [$tahunAkademik, $tahunAkademik]);
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[$row->jadwal_id][] = [
+                'npm'            => $row->npm,
+                'nama_mahasiswa' => $row->nama_mahasiswa,
+                'nilai_angka'    => $row->nilai_angka !== null ? (float) $row->nilai_angka : null,
+                'nilai_huruf'    => $row->nilai_huruf ?? null,
+                'nilai_bobot'    => $row->nilai_bobot !== null ? (float) $row->nilai_bobot : null,
+            ];
+        }
+
+        return $result;
     }
 }
