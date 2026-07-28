@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Auth\TokenController;
 use App\Http\Controllers\Api\FeederController;
 use App\Http\Controllers\Api\KhsController;
 use App\Http\Controllers\Api\KrsController;
+use App\Http\Controllers\Api\LaporanNilaiController;
 use App\Http\Controllers\Api\PegawaiController;
 use App\Http\Controllers\Api\TagihanController;
 use App\Http\Controllers\Api\TelegramController;
@@ -77,5 +78,10 @@ Route::middleware('jwt.auth')->group(function () {
         Route::post('/mahasiswa-keluar', [FeederController::class, 'mahasiswaKeluar']);
         Route::post('/mahasiswa-masuk', [FeederController::class, 'mahasiswaMasuk']);
         Route::post('/wilayah', [FeederController::class, 'dataWilayah']);
+    });
+
+    Route::prefix('laporan')->group(function () {
+        Route::post('/input-nilai', [LaporanNilaiController::class, 'index'])
+            ->middleware('scope:laporan:read,laporan:input-nilai');
     });
 });
