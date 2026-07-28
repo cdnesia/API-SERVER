@@ -42,6 +42,15 @@ Route::middleware('jwt.auth')->group(function () {
 
         Route::post('/cek-lunas', [TagihanController::class, 'cekLunas'])
             ->middleware('scope:tagihan:read,tagihan:cek-lunas');
+
+        Route::post('/massal', [TagihanController::class, 'massal'])
+            ->middleware('scope:tagihan:read,tagihan:massal');
+
+        Route::post('/edit', [TagihanController::class, 'edit'])
+            ->middleware('scope:tagihan:write,tagihan:edit');
+
+        Route::post('/create-pmb', [TagihanController::class, 'createPMB'])
+            ->middleware('scope:tagihan:write,tagihan:create-pmb');
     });
 
     Route::prefix('telegram')->group(function () {

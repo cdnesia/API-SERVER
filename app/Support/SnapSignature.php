@@ -9,9 +9,17 @@ class SnapSignature
     /**
      * Reject requests whose `X-TIMESTAMP` is too far from server time
      * (malformed or stale/future timestamps are both rejected).
+     *
+     * Relative keywords like "now", "tomorrow", "+1 day" are explicitly
+     * rejected to prevent attackers from crafting timestamps that always
+     * fall within the tolerance window.
      */
     public static function verifyTimestamp(string $timestamp, int $toleranceSeconds): bool
     {
+        if (Carbon::hasRelativeKeywords($timestamp)) {
+            return false;
+        }
+
         try {
             $sent = Carbon::parse($timestamp);
         } catch (\Throwable) {

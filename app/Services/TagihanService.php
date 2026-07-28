@@ -167,6 +167,80 @@ class TagihanService
         ];
     }
 
+    // ──────────────────────────────────────────────
+    //  Massal & Mutasi
+    // ──────────────────────────────────────────────
+
+    /**
+     * Ambil tagihan untuk banyak NPM sekaligus, optional filter tahun akademik.
+     *
+     * @param  string[]  $npms
+     * @param  string[]  $tahunAkademik
+     */
+    public function getByNpms(array $npms, array $tahunAkademik = []): Collection
+    {
+        $query = Tagihan::with('pembayaran')->whereIn('npm', $npms);
+
+        if (! empty($tahunAkademik)) {
+            $query->whereIn('tahun_akademik', $tahunAkademik);
+        }
+
+        return $query->orderBy('npm')->orderBy('tahun_akademik', 'desc')->get();
+    }
+
+    /**
+     * Update tagihan berdasarkan nomor_tagihan.
+     */
+    public function updateByNomor(string $nomorTagihan, array $data): ?Tagihan
+    {
+        $tagihan = $this->getByNomor($nomorTagihan);
+
+        if (! $tagihan) {
+            return null;
+        }
+
+        // Mapping field dari request ke kolom model
+        $mapping = [
+            'kode_prodi'      => 'kode_program_studi',
+            'jumlah_tagihan'  => 'total_tagihan',
+        ];
+
+        $mapped = [];
+        foreach ($data as $key => $value) {
+            $col = $mapping[$key] ?? $key;
+            $mapped[$col] = $value;
+        }
+
+        $tagihan->fill($mapped)->save();
+
+        return $tagihan->fresh();
+    }
+
+    /**
+     * Buat tagihan PMB (Penerimaan Mahasiswa Baru).
+     */
+    public function createPMB(array $data): Tagihan
+    {
+        $nomorTagihan = 'PMB-' . $data['npm'] . '-' . now()->format('YmdHis') . '-' . rand(100, 999);
+
+        $tagihan = Tagihan::create([
+            'nomor_tagihan'        => $nomorTagihan,
+            'npm'                  => $data['npm'],
+            'nama_mahasiswa'       => $data['nama_mahasiswa'],
+            'kode_program_studi'   => $data['kode_prodi'],
+            'id_kelas_perkuliahan' => $data['id_kelas_perkuliahan'],
+            'tahun_akademik'       => $data['tahun_akademik'],
+            'total_tagihan'        => $data['jumlah_tagihan'],
+            'nominal_ditagih'      => $data['jumlah_tagihan'],
+            'nominal_terbayar'     => 0,
+            'jenis_tagihan'        => 'PMB',
+            'status_aktif'         => 'Y',
+            'waktu_berakhir'       => now()->addYear(),
+        ]);
+
+        return $tagihan;
+    }
+
     /**
      * Format data pembayaran.
      */
