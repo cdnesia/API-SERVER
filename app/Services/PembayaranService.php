@@ -12,7 +12,7 @@ class PembayaranService
      */
     public function getByNpm(string $npm): Collection
     {
-        return Pembayaran::where('nomor_tagihan', 'like', $npm . '%')
+        return Pembayaran::where('npm', 'like', $npm . '%')
             ->orderBy('waktu_transaksi', 'desc')
             ->get();
     }
