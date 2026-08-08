@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\TokenController;
 use App\Http\Controllers\Api\FeederController;
 use App\Http\Controllers\Api\KhsController;
+use App\Http\Controllers\Api\MahasiswaController;
 use App\Http\Controllers\Api\KrsController;
 use App\Http\Controllers\Api\LaporanNilaiController;
 use App\Http\Controllers\Api\PegawaiController;
@@ -71,6 +72,11 @@ Route::middleware('jwt.auth')->group(function () {
 
     Route::prefix('pegawai')->middleware('scope:pegawai:read')->group(function () {
         Route::post('/', [PegawaiController::class, 'index']);
+    });
+
+    Route::prefix('mahasiswa')->middleware('scope:mahasiswa:read')->group(function () {
+        Route::post('/', [MahasiswaController::class, 'index']);
+        Route::post('/detail', [MahasiswaController::class, 'show']);
     });
 
     Route::prefix('prodi')->middleware('scope:prodi:read')->group(function () {
