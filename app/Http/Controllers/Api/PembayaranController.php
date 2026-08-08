@@ -59,7 +59,7 @@ class PembayaranController extends Controller
     public function detail(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
-            'id_record_pembayaran' => ['required', 'string', 'max:50'],
+            'id_record_pembayaran' => ['required', 'string', 'max:100'],
         ], [
             'id_record_pembayaran.required' => 'ID record pembayaran wajib diisi.',
         ]);
@@ -95,7 +95,7 @@ class PembayaranController extends Controller
     public function byTagihan(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
-            'id_record_tagihan' => ['required', 'string', 'max:50'],
+            'id_record_tagihan' => ['required', 'string', 'max:30'],
         ], [
             'id_record_tagihan.required' => 'ID record tagihan wajib diisi.',
         ]);
@@ -114,38 +114,6 @@ class PembayaranController extends Controller
             );
         } catch (\Throwable $e) {
             Log::error('PembayaranController: gagal mengambil pembayaran by tagihan.', ['id_record_tagihan' => $idRecordTagihan, 'message' => $e->getMessage()]);
-
-            return ApiResponse::error('Gagal mengambil data pembayaran', null, 500, ErrorCode::INTERNAL_ERROR);
-        }
-    }
-
-    /**
-     * Ambil pembayaran berdasarkan nomor_tagihan.
-     *
-     * Body: { "nomor_tagihan": "..." }
-     */
-    public function byNomorTagihan(Request $request): \Illuminate\Http\JsonResponse
-    {
-        $validator = Validator::make($request->json()->all(), [
-            'nomor_tagihan' => ['required', 'string', 'max:50'],
-        ], [
-            'nomor_tagihan.required' => 'Nomor tagihan wajib diisi.',
-        ]);
-
-        if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
-        }
-
-        $nomorTagihan = $request->json('nomor_tagihan');
-
-        try {
-            $pembayaran = $this->pembayaranService->getByNomorTagihan($nomorTagihan);
-
-            return ApiResponse::success(
-                $pembayaran->map(fn ($p) => $this->pembayaranService->formatPembayaran($p))
-            );
-        } catch (\Throwable $e) {
-            Log::error('PembayaranController: gagal mengambil pembayaran by nomor tagihan.', ['nomor_tagihan' => $nomorTagihan, 'message' => $e->getMessage()]);
 
             return ApiResponse::error('Gagal mengambil data pembayaran', null, 500, ErrorCode::INTERNAL_ERROR);
         }

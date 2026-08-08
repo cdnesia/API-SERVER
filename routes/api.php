@@ -67,9 +67,6 @@ Route::middleware('jwt.auth')->group(function () {
         Route::post('/by-tagihan', [PembayaranController::class, 'byTagihan'])
             ->middleware('scope:pembayaran:read,pembayaran:by-tagihan');
 
-        Route::post('/by-nomor-tagihan', [PembayaranController::class, 'byNomorTagihan'])
-            ->middleware('scope:pembayaran:read,pembayaran:by-nomor-tagihan');
-
         Route::post('/summary', [PembayaranController::class, 'summary'])
             ->middleware('scope:pembayaran:read,pembayaran:summary');
 

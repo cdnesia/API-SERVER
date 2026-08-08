@@ -8,11 +8,11 @@ use Illuminate\Support\Collection;
 class PembayaranService
 {
     /**
-     * Ambil semua pembayaran berdasarkan NPM (melalui nomor_tagihan).
+     * Ambil semua pembayaran berdasarkan NPM.
      */
     public function getByNpm(string $npm): Collection
     {
-        return Pembayaran::where('npm', 'like', $npm . '%')
+        return Pembayaran::where('npm', $npm)
             ->orderBy('waktu_transaksi', 'desc')
             ->get();
     }
@@ -36,16 +36,6 @@ class PembayaranService
     }
 
     /**
-     * Ambil pembayaran berdasarkan nomor_tagihan.
-     */
-    public function getByNomorTagihan(string $nomorTagihan): Collection
-    {
-        return Pembayaran::where('nomor_tagihan', $nomorTagihan)
-            ->orderBy('waktu_transaksi', 'desc')
-            ->get();
-    }
-
-    /**
      * Ambil pembayaran dalam rentang tanggal.
      */
     public function getByDateRange(string $startDate, string $endDate): Collection
@@ -64,7 +54,7 @@ class PembayaranService
 
         $totalPembayaran = 0;
         foreach ($pembayaran as $p) {
-            $totalPembayaran += (float) $p->jumlah_pembayaran;
+            $totalPembayaran += (float) $p->nominal;
         }
 
         return [
@@ -87,16 +77,15 @@ class PembayaranService
         return [
             'id_record_pembayaran' => $p->id_record_pembayaran,
             'id_record_tagihan'    => $p->id_record_tagihan,
-            'nomor_tagihan'        => $p->nomor_tagihan,
+            'tahun_akademik'       => $p->tahun_akademik,
+            'pmb'                  => $p->pmb,
+            'npm'                  => $p->npm,
+            'id_bipot'             => $p->id_bipot,
+            'nama_bipot'           => $p->nama_bipot,
+            'nominal'              => (float) $p->nominal,
             'waktu_transaksi'      => $p->waktu_transaksi?->format('Y-m-d H:i:s'),
-            'waktu_transaksi_bank' => $p->waktu_transaksi_bank?->format('Y-m-d H:i:s'),
-            'kanal'                => $p->kanal,
-            'kode_terminal'        => $p->kode_terminal,
-            'jumlah_pembayaran'    => (float) $p->jumlah_pembayaran,
-            'bill_reff'            => $p->bill_reff,
-            'from_bank'            => $p->from_bank,
-            'keterangan'           => $p->keterangan,
-            'proses'               => $p->proses,
+            'bank'                 => $p->bank,
+            'metode'               => $p->metode,
         ];
     }
 }
