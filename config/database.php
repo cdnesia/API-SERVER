@@ -111,6 +111,26 @@ return [
             ]) : [],
         ],
 
+        'db_simaku' => [
+            'driver' => 'mariadb',
+            'url' => env('DB_URL_SIMAKU'),
+            'host' => env('DB_HOST_SIMAKU', '127.0.0.1'),
+            'port' => env('DB_PORT_SIMAKU', '3306'),
+            'database' => env('DB_DATABASE_SIMAKU', 'laravel'),
+            'username' => env('DB_USERNAME_SIMAKU', 'root'),
+            'password' => env('DB_PASSWORD_SIMAKU', ''),
+            'unix_socket' => env('DB_SOCKET_SIMAKU', ''),
+            'charset' => env('DB_CHARSET_SIMAKU', 'utf8mb4'),
+            'collation' => env('DB_COLLATION_SIMAKU', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
     ],
 
     /*

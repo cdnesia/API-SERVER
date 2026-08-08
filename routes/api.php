@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\MahasiswaController;
 use App\Http\Controllers\Api\KrsController;
 use App\Http\Controllers\Api\LaporanNilaiController;
 use App\Http\Controllers\Api\PegawaiController;
+use App\Http\Controllers\Api\PembayaranController;
 use App\Http\Controllers\Api\ProdiController;
 use App\Http\Controllers\Api\TagihanController;
 use App\Http\Controllers\Api\TelegramController;
@@ -54,6 +55,26 @@ Route::middleware('jwt.auth')->group(function () {
 
         Route::post('/create-pmb', [TagihanController::class, 'createPMB'])
             ->middleware('scope:tagihan:write,tagihan:create-pmb');
+    });
+
+    Route::prefix('pembayaran')->group(function () {
+        Route::post('/', [PembayaranController::class, 'index'])
+            ->middleware('scope:pembayaran:read,pembayaran:index');
+
+        Route::post('/detail', [PembayaranController::class, 'detail'])
+            ->middleware('scope:pembayaran:read,pembayaran:detail');
+
+        Route::post('/by-tagihan', [PembayaranController::class, 'byTagihan'])
+            ->middleware('scope:pembayaran:read,pembayaran:by-tagihan');
+
+        Route::post('/by-nomor-tagihan', [PembayaranController::class, 'byNomorTagihan'])
+            ->middleware('scope:pembayaran:read,pembayaran:by-nomor-tagihan');
+
+        Route::post('/summary', [PembayaranController::class, 'summary'])
+            ->middleware('scope:pembayaran:read,pembayaran:summary');
+
+        Route::post('/by-date-range', [PembayaranController::class, 'byDateRange'])
+            ->middleware('scope:pembayaran:read,pembayaran:by-date-range');
     });
 
     Route::prefix('telegram')->group(function () {

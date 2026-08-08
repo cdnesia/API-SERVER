@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Pembayaran extends Model
 {
-    protected $connection = 'db_payment';
+    protected $connection = 'db_simaku';
 
     public $table = 'pembayaran';
 
