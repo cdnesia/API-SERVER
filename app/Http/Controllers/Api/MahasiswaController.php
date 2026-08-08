@@ -34,7 +34,7 @@ class MahasiswaController extends Controller
             }
 
             if ($request->filled('program_kuliah')) {
-                $query->where('program_kuliah_id', $request->input('program_kuliah_id'));
+                $query->where('program_kuliah_id', $request->input('program_kuliah'));
             }
 
             $mahasiswa = $query->get();
