@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Pembayaran;
 use App\Models\Tagihan;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class TagihanService
 {
@@ -214,6 +215,79 @@ class TagihanService
         $tagihan->fill($mapped)->save();
 
         return $tagihan->fresh();
+    }
+
+    /**
+     * Hapus (soft delete) tagihan berdasarkan nomor_tagihan.
+     */
+    public function deleteByNomor(string $nomorTagihan): bool
+    {
+        $tagihan = $this->getByNomor($nomorTagihan);
+
+        if (! $tagihan) {
+            return false;
+        }
+
+        return (bool) $tagihan->delete();
+    }
+
+    /**
+     * Buat tagihan baru (general-purpose, semua jenis tagihan).
+     *
+     * `id_record_tagihan` dan `nomor_tagihan` adalah varchar(30) — generator
+     * di bawah menjaga keduanya tetap pendek terlepas dari panjang NPM/jenis_tagihan.
+     */
+    public function create(array $data): Tagihan
+    {
+        return Tagihan::create([
+            'id_record_tagihan'     => $data['id_record_tagihan'] ?? $this->generateIdRecord(),
+            'nomor_tagihan'         => $data['nomor_tagihan'] ?? $this->generateNomorTagihan($data['jenis_tagihan'] ?? 'TGH'),
+            'npm'                   => $data['npm'],
+            'nama_mahasiswa'        => $data['nama_mahasiswa'],
+            'nama_fakultas'         => $data['nama_fakultas'] ?? '',
+            'kode_program_studi'    => $data['kode_program_studi'],
+            'nama_program_studi'    => $data['nama_program_studi'] ?? '',
+            'id_kelas_perkuliahan'  => $data['id_kelas_perkuliahan'] ?? '',
+            'nama_kelas_perkuliahan'=> $data['nama_kelas_perkuliahan'] ?? null,
+            'tahun_akademik'        => $data['tahun_akademik'],
+            'waktu_berakhir'        => $data['waktu_berakhir'] ?? now()->addYear(),
+            'detail_tagihan'        => $data['detail_tagihan'] ?? null,
+            'total_tagihan'         => $data['total_tagihan'],
+            'detail_potongan'       => $data['detail_potongan'] ?? null,
+            'total_potongan'        => $data['total_potongan'] ?? 0,
+            'nominal_ditagih'       => $data['nominal_ditagih'] ?? $data['total_tagihan'],
+            'nominal_terbayar'      => $data['nominal_terbayar'] ?? 0,
+            'jenis_tagihan'         => $data['jenis_tagihan'] ?? 'LAINNYA',
+            'status_aktif'          => $data['status_aktif'] ?? 'Y',
+            'khs'                   => $data['khs'] ?? 0,
+        ]);
+    }
+
+    /**
+     * `{tahun}-{5 digit acak}`, mengikuti konvensi data id_record_tagihan yang ada.
+     */
+    private function generateIdRecord(): string
+    {
+        do {
+            $candidate = now()->format('Y') . '-' . str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+        } while (Tagihan::withTrashed()->where('id_record_tagihan', $candidate)->exists());
+
+        return $candidate;
+    }
+
+    /**
+     * `{kode_jenis}/{tanggal}/{acak}` — selalu jauh di bawah batas varchar(30)
+     * terlepas dari panjang jenis_tagihan yang dikirim.
+     */
+    private function generateNomorTagihan(string $jenisTagihan): string
+    {
+        $kode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $jenisTagihan) ?: 'TGH', 0, 4));
+
+        do {
+            $candidate = $kode . '/' . now()->format('Ymd') . '/' . strtoupper(Str::random(6));
+        } while (Tagihan::withTrashed()->where('nomor_tagihan', $candidate)->exists());
+
+        return $candidate;
     }
 
     /**

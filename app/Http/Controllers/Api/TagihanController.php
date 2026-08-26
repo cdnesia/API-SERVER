@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Mahasiswa;
 use App\Services\TagihanService;
 use App\Support\ApiResponse;
 use App\Support\ErrorCode;
@@ -16,28 +17,52 @@ class TagihanController extends Controller
         protected TagihanService $tagihanService,
     ) {}
 
+    /**
+     * Ambil daftar tagihan berdasarkan NPM, opsional filter periode.
+     */
     public function index(Request $request): \Illuminate\Http\JsonResponse
     {
-        $validator = Validator::make($request->json()->all(), [
-            'npm'     => ['required', 'string', 'max:20'],
-            'periode' => ['nullable', 'string', 'regex:/^\d{4}[12]$/'],
-        ], [
-            'npm.required'  => 'NPM wajib diisi.',
-            'npm.max'       => 'NPM maksimal :max karakter.',
-            'periode.regex' => 'Format periode tidak valid. Gunakan format YYYY1 (Ganjil) atau YYYY2 (Genap), contoh: 20241.',
+        $npmInput     = $request->json('npm');
+        $periodeInput = $request->json('periode');
+
+        $rules = [
+            'npm'     => is_array($npmInput) ? ['required', 'array', 'min:1'] : ['required', 'string', 'max:20'],
+            'periode' => is_array($periodeInput) ? ['nullable', 'array'] : ['nullable', 'string', 'regex:/^\d{4}[12]$/'],
+        ];
+
+        if (is_array($npmInput)) {
+            $rules['npm.*'] = ['string', 'max:20'];
+        }
+
+        if (is_array($periodeInput)) {
+            $rules['periode.*'] = ['string', 'regex:/^\d{4}[12]$/'];
+        }
+
+        $validator = Validator::make($request->json()->all(), $rules, [
+            'npm.required'     => 'NPM wajib diisi.',
+            'npm.array'        => 'NPM harus berupa string atau array NPM.',
+            'npm.max'          => 'NPM maksimal :max karakter.',
+            'npm.*.max'        => 'NPM maksimal :max karakter.',
+            'periode.regex'    => 'Format periode tidak valid. Gunakan format YYYY1 (Ganjil) atau YYYY2 (Genap), contoh: 20241.',
+            'periode.*.regex'  => 'Format periode tidak valid. Gunakan format YYYY1 (Ganjil) atau YYYY2 (Genap), contoh: 20241.',
         ]);
 
         if ($validator->fails()) {
             return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
-        $npm     = $request->json('npm');
-        $periode = $request->json('periode');
+        $npm     = $npmInput;
+        $periode = $periodeInput;
 
         try {
-            $tagihan = $periode
-                ? $this->tagihanService->getByNpmAndPeriode($npm, $periode)
-                : $this->tagihanService->getByNpm($npm);
+            if (is_array($npm)) {
+                $periodeList = $periode ? (array) $periode : [];
+                $tagihan     = $this->tagihanService->getByNpms($npm, $periodeList);
+            } else {
+                $tagihan = $periode
+                    ? $this->tagihanService->getByNpmAndPeriode($npm, $periode)
+                    : $this->tagihanService->getByNpm($npm);
+            }
 
             return ApiResponse::success(
                 $tagihan->map(fn ($t) => $this->tagihanService->formatTagihan($t))
@@ -49,172 +74,85 @@ class TagihanController extends Controller
         }
     }
 
-    public function summary(Request $request): \Illuminate\Http\JsonResponse
-    {
-        $validator = Validator::make($request->json()->all(), [
-            'npm'     => ['required', 'string', 'max:20'],
-            'periode' => ['nullable', 'string', 'regex:/^\d{4}[12]$/'],
-        ], [
-            'npm.required'  => 'NPM wajib diisi.',
-            'npm.max'       => 'NPM maksimal :max karakter.',
-            'periode.regex' => 'Format periode tidak valid. Gunakan format YYYY1 (Ganjil) atau YYYY2 (Genap), contoh: 20241.',
-        ]);
-
-        if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
-        }
-
-        $npm     = $request->json('npm');
-        $periode = $request->json('periode');
-
-        try {
-            return ApiResponse::success($this->tagihanService->getSummary($npm, $periode));
-        } catch (\Throwable $e) {
-            Log::error('TagihanController: gagal mengambil ringkasan tagihan.', ['npm' => $npm, 'message' => $e->getMessage()]);
-
-            return ApiResponse::error('Gagal mengambil ringkasan tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
-        }
-    }
-
-    public function detail(Request $request): \Illuminate\Http\JsonResponse
-    {
-        $validator = Validator::make($request->json()->all(), [
-            'id_record_tagihan' => ['required', 'string', 'max:50'],
-        ], [
-            'id_record_tagihan.required' => 'ID record tagihan wajib diisi.',
-        ]);
-
-        if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
-        }
-
-        $idRecord = $request->json('id_record_tagihan');
-
-        try {
-            $tagihan = $this->tagihanService->getByIdRecord($idRecord);
-
-            if (! $tagihan) {
-                return ApiResponse::error('Tagihan tidak ditemukan.', null, 404, ErrorCode::DATA_NOT_FOUND);
-            }
-
-            return ApiResponse::success([
-                'tagihan'    => $this->tagihanService->formatTagihan($tagihan),
-                'pembayaran' => $tagihan->pembayaran->map(
-                    fn ($p) => $this->tagihanService->formatPembayaran($p)
-                ),
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('TagihanController: gagal mengambil detail tagihan.', ['id_record_tagihan' => $idRecord, 'message' => $e->getMessage()]);
-
-            return ApiResponse::error('Gagal mengambil detail tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
-        }
-    }
-
-    public function cekLunas(Request $request): \Illuminate\Http\JsonResponse
-    {
-        $validator = Validator::make($request->json()->all(), [
-            'npm'     => ['required', 'string', 'max:20'],
-            'periode' => ['nullable', 'string', 'regex:/^\d{4}[12]$/'],
-        ], [
-            'npm.required'  => 'NPM wajib diisi.',
-            'npm.max'       => 'NPM maksimal :max karakter.',
-            'periode.regex' => 'Format periode tidak valid. Gunakan format YYYY1 (Ganjil) atau YYYY2 (Genap), contoh: 20241.',
-        ]);
-
-        if ($validator->fails()) {
-            return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
-        }
-
-        $npm     = $request->json('npm');
-        $periode = $request->json('periode');
-
-        try {
-            $tagihan = $periode
-                ? $this->tagihanService->getByNpmAndPeriode($npm, $periode)
-                : $this->tagihanService->getAktifByNpm($npm);
-
-            if ($tagihan->isEmpty()) {
-                return ApiResponse::success([
-                    'lunas'   => true,
-                    'message' => 'Tidak ada tagihan.',
-                ]);
-            }
-
-            $semuaLunas = $tagihan->every(fn ($t) => $this->tagihanService->isLunas($t));
-
-            return ApiResponse::success([
-                'lunas'       => $semuaLunas,
-                'total'       => $tagihan->count(),
-                'rincian'     => $tagihan->map(fn ($t) => [
-                    'nomor_tagihan'  => $t->nomor_tagihan,
-                    'jenis_tagihan'  => $t->jenis_tagihan,
-                    'tahun_akademik' => $t->tahun_akademik,
-                    'ditagih'        => (float) $t->nominal_ditagih,
-                    'terbayar'       => (float) $t->nominal_terbayar,
-                    'lunas'          => $this->tagihanService->isLunas($t),
-                ]),
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('TagihanController: gagal mengecek status tagihan.', ['npm' => $npm, 'message' => $e->getMessage()]);
-
-            return ApiResponse::error('Gagal mengecek status tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
-        }
-    }
-
     /**
-     * Cek tagihan untuk banyak NPM sekaligus.
+     * Buat tagihan baru (general-purpose, semua jenis tagihan).
      *
-     * Body: { "npms": ["...", "..."], "tahun_akademik": ["20241", "20242"] }
+     * Data mahasiswa (nama, prodi, fakultas) diambil otomatis dari NPM —
+     * cukup kirim npm, tahun_akademik, dan total_tagihan.
+     *
+     * Body: { "npm": "...", "tahun_akademik": "20241", "total_tagihan": 5000000,
+     *         "jenis_tagihan": "...", "id_kelas_perkuliahan": "...", "nama_kelas_perkuliahan": "...",
+     *         "waktu_berakhir": "2025-12-31", "nominal_ditagih": 5000000,
+     *         "detail_tagihan": [...], "total_potongan": 0, "detail_potongan": [...], "status_aktif": "Y" }
      */
-    public function massal(Request $request): \Illuminate\Http\JsonResponse
+    public function create(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
-            'npms'            => ['required', 'array', 'min:1'],
-            'npms.*'          => ['required', 'string', 'max:20'],
-            'tahun_akademik'  => ['nullable', 'array'],
-            'tahun_akademik.*'=> ['string', 'regex:/^\d{4}[12]$/'],
+            'npm'                    => ['required', 'string', 'max:20'],
+            'tahun_akademik'         => ['required', 'string', 'regex:/^\d{4}[12]$/'],
+            'total_tagihan'          => ['required', 'numeric', 'min:0'],
+            'id_kelas_perkuliahan'   => ['nullable', 'string', 'max:50'],
+            'nama_kelas_perkuliahan' => ['nullable', 'string', 'max:100'],
+            'waktu_berakhir'         => ['nullable', 'date'],
+            'jenis_tagihan'          => ['nullable', 'string', 'max:50'],
+            'status_aktif'           => ['nullable', 'string', 'in:Y,T'],
+            'nominal_ditagih'        => ['nullable', 'numeric', 'min:0'],
+            'total_potongan'         => ['nullable', 'numeric', 'min:0'],
+            'detail_tagihan'         => ['nullable', 'array'],
+            'detail_potongan'        => ['nullable', 'array'],
+            'khs'                    => ['nullable', 'integer'],
         ], [
-            'npms.required'         => 'npms wajib diisi.',
-            'npms.array'            => 'npms harus berupa array.',
-            'npms.min'              => 'Minimal 1 NPM.',
-            'npms.*.required'       => 'NPM wajib diisi.',
-            'tahun_akademik.*.regex'=> 'Format tahun akademik tidak valid (YYYY1/YYYY2).',
+            'npm.required'            => 'NPM wajib diisi.',
+            'tahun_akademik.required' => 'Tahun akademik wajib diisi.',
+            'tahun_akademik.regex'    => 'Format tahun akademik tidak valid (YYYY1/YYYY2).',
+            'status_aktif.in'         => 'Status aktif harus Y atau T.',
+            'total_tagihan.required'  => 'Total tagihan wajib diisi.',
+            'total_tagihan.numeric'   => 'Total tagihan harus berupa angka.',
+            'total_tagihan.min'       => 'Total tagihan minimal 0.',
         ]);
 
         if ($validator->fails()) {
             return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
-        $npms           = $request->json('npms');
-        $tahunAkademik  = $request->json('tahun_akademik', []);
+        $npm = $request->json('npm');
+
+        $mahasiswa = Mahasiswa::with('programStudi.fakultas')
+            ->where('npm', $npm)
+            ->first();
+
+        if (! $mahasiswa) {
+            return ApiResponse::error("Mahasiswa dengan NPM {$npm} tidak ditemukan.", null, 404, ErrorCode::DATA_NOT_FOUND);
+        }
+
+        $data = array_merge($request->json()->all(), [
+            'nama_mahasiswa'     => $mahasiswa->nama_mahasiswa,
+            'kode_program_studi' => $mahasiswa->kode_program_studi,
+            'nama_program_studi' => $mahasiswa->programStudi?->nama_program_studi_idn,
+            'nama_fakultas'      => $mahasiswa->programStudi?->fakultas?->nama_fakultas_idn,
+        ]);
 
         try {
-            $data = $this->tagihanService->getByNpms($npms, $tahunAkademik);
-
-            $grouped = [];
-            foreach ($data as $row) {
-                $grouped[$row->npm][] = $this->tagihanService->formatTagihan($row);
-            }
+            $tagihan = $this->tagihanService->create($data);
 
             return ApiResponse::success([
-                'jumlah_npm'     => count($npms),
-                'npm_ditemukan'  => count($grouped),
-                'jumlah_data'    => $data->count(),
-                'data'           => $grouped,
+                'message'        => 'Tagihan berhasil dibuat.',
+                'nomor_tagihan'  => $tagihan->nomor_tagihan,
+                'data'           => $this->tagihanService->formatTagihan($tagihan),
             ]);
         } catch (\Throwable $e) {
-            Log::error('TagihanController: gagal mengambil data tagihan massal.', ['npms' => $npms, 'message' => $e->getMessage()]);
+            Log::error('TagihanController: gagal membuat tagihan.', ['npm' => $npm, 'message' => $e->getMessage()]);
 
-            return ApiResponse::error('Gagal mengambil data tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
+            return ApiResponse::error('Gagal membuat tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
 
     /**
-     * Edit tagihan berdasarkan nomor_tagihan.
+     * Update tagihan berdasarkan nomor_tagihan.
      *
      * Body: { "nomor_tagihan": "...", "npm": "...", ... }
      */
-    public function edit(Request $request): \Illuminate\Http\JsonResponse
+    public function update(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
             'nomor_tagihan' => ['required', 'string', 'max:50'],
@@ -272,47 +210,36 @@ class TagihanController extends Controller
     }
 
     /**
-     * Buat tagihan PMB (Penerimaan Mahasiswa Baru).
+     * Hapus tagihan berdasarkan nomor_tagihan (soft delete).
      *
-     * Body: { "npm": "...", "tahun_akademik": "20241", "nama_mahasiswa": "...",
-     *         "kode_prodi": "...", "jumlah_tagihan": 5000000, "id_kelas_perkuliahan": "..." }
+     * Body: { "nomor_tagihan": "..." }
      */
-    public function createPMB(Request $request): \Illuminate\Http\JsonResponse
+    public function delete(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
-            'npm'                  => ['required', 'string', 'max:20'],
-            'tahun_akademik'       => ['required', 'string', 'regex:/^\d{4}[12]$/'],
-            'nama_mahasiswa'       => ['required', 'string', 'max:100'],
-            'kode_prodi'           => ['required', 'string', 'max:20'],
-            'id_kelas_perkuliahan' => ['required', 'string', 'max:50'],
-            'jumlah_tagihan'       => ['required', 'numeric', 'min:0'],
+            'nomor_tagihan' => ['required', 'string', 'max:50'],
         ], [
-            'npm.required'                  => 'NPM wajib diisi.',
-            'tahun_akademik.required'       => 'Tahun akademik wajib diisi.',
-            'tahun_akademik.regex'          => 'Format tahun akademik tidak valid (YYYY1/YYYY2).',
-            'nama_mahasiswa.required'       => 'Nama mahasiswa wajib diisi.',
-            'kode_prodi.required'           => 'Kode prodi wajib diisi.',
-            'id_kelas_perkuliahan.required' => 'ID kelas perkuliahan wajib diisi.',
-            'jumlah_tagihan.required'       => 'Jumlah tagihan wajib diisi.',
-            'jumlah_tagihan.numeric'        => 'Jumlah tagihan harus berupa angka.',
-            'jumlah_tagihan.min'            => 'Jumlah tagihan minimal 0.',
+            'nomor_tagihan.required' => 'Nomor tagihan wajib diisi.',
         ]);
 
         if ($validator->fails()) {
             return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
+        $nomorTagihan = $request->json('nomor_tagihan');
+
         try {
-            $tagihan = $this->tagihanService->createPMB($request->json()->all());
+            $deleted = $this->tagihanService->deleteByNomor($nomorTagihan);
 
-            return ApiResponse::success([
-                'message'        => 'Tagihan berhasil dibuat.',
-                'nomor_tagihan'  => $tagihan->nomor_tagihan,
-            ]);
+            if (! $deleted) {
+                return ApiResponse::error('Tagihan tidak ditemukan.', null, 404, ErrorCode::DATA_NOT_FOUND);
+            }
+
+            return ApiResponse::success(['message' => 'Tagihan berhasil dihapus.']);
         } catch (\Throwable $e) {
-            Log::error('TagihanController: gagal membuat tagihan PMB.', ['npm' => $request->json('npm'), 'message' => $e->getMessage()]);
+            Log::error('TagihanController: gagal menghapus tagihan.', ['nomor_tagihan' => $nomorTagihan, 'message' => $e->getMessage()]);
 
-            return ApiResponse::error('Gagal membuat tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
+            return ApiResponse::error('Gagal menghapus tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
 }
