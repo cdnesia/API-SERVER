@@ -22,8 +22,8 @@ class TagihanController extends Controller
      */
     public function index(Request $request): \Illuminate\Http\JsonResponse
     {
-        $npmInput     = $request->json('npm');
-        $periodeInput = $request->json('periode');
+        $npmInput     = $request->json('npms');
+        $periodeInput = $request->json('tahun_akademik');
 
         $rules = [
             'npm'     => is_array($npmInput) ? ['required', 'array', 'min:1'] : ['required', 'string', 'max:20'],

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\TokenController;
+use App\Http\Controllers\Api\BipotController;
 use App\Http\Controllers\Api\TagihanController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Support\ApiResponse;
@@ -30,6 +31,48 @@ Route::middleware('jwt.auth')->group(function () {
 
         Route::post('/delete', [TagihanController::class, 'delete'])
             ->middleware('scope:tagihan:write,tagihan:delete');
+    });
+
+    Route::prefix('bipot')->group(function () {
+        Route::post('/', [BipotController::class, 'index'])
+            ->middleware('scope:bipot:read,bipot:get');
+
+        Route::post('/create', [BipotController::class, 'create'])
+            ->middleware('scope:bipot:write,bipot:create');
+
+        Route::post('/update', [BipotController::class, 'update'])
+            ->middleware('scope:bipot:write,bipot:update');
+
+        Route::post('/delete', [BipotController::class, 'delete'])
+            ->middleware('scope:bipot:write,bipot:delete');
+
+        Route::prefix('angkatan')->group(function () {
+            Route::post('/', [BipotController::class, 'angkatan'])
+                ->middleware('scope:bipot:read,bipot:angkatan');
+
+            Route::post('/create', [BipotController::class, 'angkatanCreate'])
+                ->middleware('scope:bipot:write,bipot:angkatan-create');
+
+            Route::post('/update', [BipotController::class, 'angkatanUpdate'])
+                ->middleware('scope:bipot:write,bipot:angkatan-update');
+
+            Route::post('/delete', [BipotController::class, 'angkatanDelete'])
+                ->middleware('scope:bipot:write,bipot:angkatan-delete');
+        });
+
+        Route::prefix('rincian')->group(function () {
+            Route::post('/', [BipotController::class, 'rincian'])
+                ->middleware('scope:bipot:read,bipot:rincian');
+
+            Route::post('/create', [BipotController::class, 'rincianCreate'])
+                ->middleware('scope:bipot:write,bipot:rincian-create');
+
+            Route::post('/update', [BipotController::class, 'rincianUpdate'])
+                ->middleware('scope:bipot:write,bipot:rincian-update');
+
+            Route::post('/delete', [BipotController::class, 'rincianDelete'])
+                ->middleware('scope:bipot:write,bipot:rincian-delete');
+        });
     });
 
     Route::prefix('telegram')->group(function () {
