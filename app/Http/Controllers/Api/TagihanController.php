@@ -26,7 +26,7 @@ class TagihanController extends Controller
         $periodeInput = $request->json('tahun_akademik');
 
         $rules = [
-            'npm'     => is_array($npmInput) ? ['required', 'array', 'min:1'] : ['required', 'string', 'max:20'],
+            'npms'     => is_array($npmInput) ? ['required', 'array', 'min:1'] : ['required', 'string', 'max:20'],
             'periode' => is_array($periodeInput) ? ['nullable', 'array'] : ['nullable', 'string', 'regex:/^\d{4}[12]$/'],
         ];
 
