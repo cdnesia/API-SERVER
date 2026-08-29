@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Pembayaran;
 use App\Models\Tagihan;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 class TagihanService
 {
@@ -241,7 +240,11 @@ class TagihanService
     {
         return Tagihan::create([
             'id_record_tagihan'     => $data['id_record_tagihan'] ?? $this->generateIdRecord(),
-            'nomor_tagihan'         => $data['nomor_tagihan'] ?? $this->generateNomorTagihan($data['jenis_tagihan'] ?? 'TGH'),
+            'nomor_tagihan'         => $data['nomor_tagihan'] ?? $this->generateNomorTagihan(
+                $data['tahun_akademik'],
+                $data['va_code'] ?? null,
+                $data['kode_tagihan'] ?? null
+            ),
             'npm'                   => $data['npm'],
             'nama_mahasiswa'        => $data['nama_mahasiswa'],
             'nama_fakultas'         => $data['nama_fakultas'] ?? '',
@@ -275,18 +278,17 @@ class TagihanService
     }
 
     /**
-     * `{kode_jenis}/{tanggal}/{acak}` — selalu jauh di bawah batas varchar(30)
-     * terlepas dari panjang jenis_tagihan yang dikirim.
+     * `{kode_depan}{va_code}` — kode depan (2 digit) diambil dari client via
+     * `kode_tagihan` jika dikirim, jika tidak otomatis diambil dari 2 digit
+     * terakhir tahun_akademik (mis. "20242" → "42"). 7 digit sisanya adalah
+     * va_code milik mahasiswa, di-pad nol di kiri.
      */
-    private function generateNomorTagihan(string $jenisTagihan): string
+    private function generateNomorTagihan(string $tahunAkademik, ?string $vaCode, ?string $kodeTagihan = null): string
     {
-        $kode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $jenisTagihan) ?: 'TGH', 0, 4));
+        $kodeDepan = $kodeTagihan ?: substr($tahunAkademik, -2);
+        $ekor      = str_pad(preg_replace('/\D/', '', (string) $vaCode), 7, '0', STR_PAD_LEFT);
 
-        do {
-            $candidate = $kode . '/' . now()->format('Ymd') . '/' . strtoupper(Str::random(6));
-        } while (Tagihan::withTrashed()->where('nomor_tagihan', $candidate)->exists());
-
-        return $candidate;
+        return $kodeDepan . $ekor;
     }
 
     /**

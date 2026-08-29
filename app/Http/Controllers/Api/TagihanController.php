@@ -77,12 +77,16 @@ class TagihanController extends Controller
     /**
      * Buat tagihan baru (general-purpose, semua jenis tagihan).
      *
-     * Data mahasiswa (nama, prodi, fakultas) diambil otomatis dari NPM —
+     * Data mahasiswa (nama, prodi, fakultas, va_code) diambil otomatis dari NPM —
      * cukup kirim npm, tahun_akademik, dan total_tagihan.
      *
+     * nomor_tagihan otomatis dibentuk dari {kode_tagihan}{va_code}. Jika
+     * kode_tagihan tidak dikirim, otomatis dipakai 2 digit terakhir
+     * tahun_akademik (mis. "20242" → "42").
+     *
      * Body: { "npm": "...", "tahun_akademik": "20241", "total_tagihan": 5000000,
-     *         "jenis_tagihan": "...", "id_kelas_perkuliahan": "...", "nama_kelas_perkuliahan": "...",
-     *         "waktu_berakhir": "2025-12-31", "nominal_ditagih": 5000000,
+     *         "jenis_tagihan": "...", "kode_tagihan": "99", "id_kelas_perkuliahan": "...",
+     *         "nama_kelas_perkuliahan": "...", "waktu_berakhir": "2025-12-31", "nominal_ditagih": 5000000,
      *         "detail_tagihan": [...], "total_potongan": 0, "detail_potongan": [...], "status_aktif": "Y" }
      */
     public function create(Request $request): \Illuminate\Http\JsonResponse
@@ -100,6 +104,7 @@ class TagihanController extends Controller
             'total_potongan'         => ['nullable', 'numeric', 'min:0'],
             'detail_tagihan'         => ['nullable', 'array'],
             'detail_potongan'        => ['nullable', 'array'],
+            'kode_tagihan'           => ['nullable', 'string', 'regex:/^\d{2}$/'],
         ], [
             'npm.required'            => 'NPM wajib diisi.',
             'tahun_akademik.required' => 'Tahun akademik wajib diisi.',
@@ -108,6 +113,7 @@ class TagihanController extends Controller
             'total_tagihan.required'  => 'Total tagihan wajib diisi.',
             'total_tagihan.numeric'   => 'Total tagihan harus berupa angka.',
             'total_tagihan.min'       => 'Total tagihan minimal 0.',
+            'kode_tagihan.regex'      => 'Kode tagihan harus 2 digit angka.',
         ]);
 
         if ($validator->fails()) {
@@ -129,6 +135,7 @@ class TagihanController extends Controller
             'kode_program_studi' => $mahasiswa->kode_program_studi,
             'nama_program_studi' => $mahasiswa->programStudi?->nama_program_studi_idn,
             'nama_fakultas'      => $mahasiswa->programStudi?->fakultas?->nama_fakultas_idn,
+            'va_code'            => $mahasiswa->va_code,
         ]);
 
         try {
