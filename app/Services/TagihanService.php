@@ -259,7 +259,6 @@ class TagihanService
             'nominal_terbayar'      => $data['nominal_terbayar'] ?? 0,
             'jenis_tagihan'         => $data['jenis_tagihan'] ?? 'LAINNYA',
             'status_aktif'          => $data['status_aktif'] ?? 'Y',
-            'khs'                   => $data['khs'] ?? 0,
         ]);
     }
 

@@ -100,7 +100,6 @@ class TagihanController extends Controller
             'total_potongan'         => ['nullable', 'numeric', 'min:0'],
             'detail_tagihan'         => ['nullable', 'array'],
             'detail_potongan'        => ['nullable', 'array'],
-            'khs'                    => ['nullable', 'integer'],
         ], [
             'npm.required'            => 'NPM wajib diisi.',
             'tahun_akademik.required' => 'Tahun akademik wajib diisi.',

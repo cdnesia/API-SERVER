@@ -34,7 +34,6 @@ class Tagihan extends Model
         'nominal_terbayar',
         'jenis_tagihan',
         'status_aktif',
-        'khs',
     ];
 
     protected function casts(): array
@@ -48,7 +47,6 @@ class Tagihan extends Model
             'nominal_terbayar'=> 'decimal:2',
             'waktu_berakhir'  => 'datetime',
             'status_aktif'    => 'string',
-            'khs'             => 'integer',
         ];
     }
 
