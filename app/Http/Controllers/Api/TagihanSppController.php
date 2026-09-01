@@ -67,18 +67,20 @@ class TagihanSppController extends Controller
             [$mahasiswa, , $summary] = $this->resolveTagihanData($npm, $tahunAkademik);
 
             $tagihan = $this->tagihanService->create([
-                'npm'                => $mahasiswa->npm,
-                'nama_mahasiswa'     => $mahasiswa->nama_mahasiswa,
-                'kode_program_studi' => $mahasiswa->kode_program_studi,
-                'nama_program_studi' => $mahasiswa->programStudi?->nama_program_studi_idn,
-                'nama_fakultas'      => $mahasiswa->programStudi?->fakultas?->nama_fakultas_idn,
-                'va_code'            => $mahasiswa->va_code,
-                'tahun_akademik'     => $tahunAkademik,
-                'jenis_tagihan'      => 'SPP',
-                'total_tagihan'      => $summary['total_biaya'],
-                'total_potongan'     => $summary['total_potongan'],
-                'nominal_ditagih'    => $summary['nominal_ditagih'],
-                'detail_tagihan'     => $summary['rincian']->all(),
+                'npm'                    => $mahasiswa->npm,
+                'nama_mahasiswa'         => $mahasiswa->nama_mahasiswa,
+                'kode_program_studi'     => $mahasiswa->kode_program_studi,
+                'nama_program_studi'     => $mahasiswa->programStudi?->nama_program_studi_idn,
+                'nama_fakultas'          => $mahasiswa->programStudi?->fakultas?->nama_fakultas_idn,
+                'va_code'                => $mahasiswa->va_code,
+                'id_kelas_perkuliahan'   => (string) $mahasiswa->program_kuliah_id,
+                'nama_kelas_perkuliahan' => $mahasiswa->kelasPerkuliahan?->nama_program_perkuliahan,
+                'tahun_akademik'         => $tahunAkademik,
+                'jenis_tagihan'          => 'SPP',
+                'total_tagihan'          => $summary['total_biaya'],
+                'total_potongan'         => $summary['total_potongan'],
+                'nominal_ditagih'        => $summary['nominal_ditagih'],
+                'detail_tagihan'         => $summary['rincian']->all(),
             ]);
 
             return ApiResponse::success([
@@ -134,7 +136,7 @@ class TagihanSppController extends Controller
 
     protected function findMahasiswa(string $npm): Mahasiswa
     {
-        $mahasiswa = Mahasiswa::with('programStudi.fakultas')
+        $mahasiswa = Mahasiswa::with('programStudi.fakultas', 'kelasPerkuliahan')
             ->where('npm', $npm)
             ->first();
 

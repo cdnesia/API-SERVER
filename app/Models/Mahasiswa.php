@@ -78,6 +78,14 @@ class Mahasiswa extends Model
     }
 
     /**
+     * Mahasiswa terdaftar di satu kelas kuliah (mis. Reguler A, Kelas Karyawan).
+     */
+    public function kelasPerkuliahan(): BelongsTo
+    {
+        return $this->belongsTo(KelasPerkuliahan::class, 'program_kuliah_id', 'id');
+    }
+
+    /**
      * Satu mahasiswa memiliki banyak KRS.
      */
     public function krs(): HasMany
