@@ -41,6 +41,9 @@ Route::middleware('jwt.auth')->group(function () {
 
         Route::post('/create', [TagihanPmbController::class, 'create'])
             ->middleware('scope:tagihan-pmb:write,tagihan-pmb:create');
+            
+        Route::post('/update', [TagihanPmbController::class, 'edit'])
+            ->middleware('scope:tagihan-pmb:edit,tagihan-pmb:edit');
     });
 
 
