@@ -234,6 +234,7 @@ class TagihanSppController extends Controller
 
         return [
             'npm'             => $mahasiswa->npm,
+            'nomor_tagihan'   => $mahasiswa->nomor_tagihan,
             'nama_mahasiswa'  => $mahasiswa->nama_mahasiswa,
             'kode_prodi'      => $mahasiswa->kode_program_studi,
             'total_biaya'     => $totalBiaya,
