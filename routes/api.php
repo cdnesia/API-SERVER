@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\TokenController;
 use App\Http\Controllers\Api\BipotController;
 use App\Http\Controllers\Api\TagihanController;
+use App\Http\Controllers\Api\TagihanSppController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,14 @@ Route::middleware('jwt.auth')->group(function () {
 
         Route::post('/delete', [TagihanController::class, 'delete'])
             ->middleware('scope:tagihan:write,tagihan:delete');
+    });
+
+    Route::prefix('tagihan-spp')->group(function () {
+        Route::post('/', [TagihanSppController::class, 'preview'])
+            ->middleware('scope:tagihan-spp:read,tagihan-spp:preview');
+
+        Route::post('/create', [TagihanSppController::class, 'create'])
+            ->middleware('scope:tagihan-spp:write,tagihan-spp:create');
     });
 
     Route::prefix('bipot')->group(function () {

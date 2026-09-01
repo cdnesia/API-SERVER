@@ -121,12 +121,20 @@ class BipotService
 
     /**
      * Rincian biaya (nominal per jenis bipot) untuk satu prodi + tahun akademik,
-     * opsional difilter per semester dan status mahasiswa (baru/lama/pindahan/dll).
+     * opsional difilter per semester, status mahasiswa (aktif/cuti/dll), jalur
+     * masuk (status_awal: baru/pindahan/RPL/dll), dan kelas kuliah (program kuliah).
+     *
+     * PENTING: satu id_bipot bisa punya beberapa baris nominal berbeda untuk
+     * jalur masuk (status_awal) yang berbeda pada prodi+tahun+semester yang
+     * sama. Tanpa filter $statusAwal, baris-baris tsb akan ikut terjumlah dan
+     * menggandakan total biaya — selalu kirim $statusAwal saat menghitung
+     * tagihan untuk satu mahasiswa tertentu.
      */
-    public function getRincianBiaya(string $kodeProdi, string $kodeTahun, ?int $semester = null, ?int $statusMahasiswa = null): Collection
+    public function getRincianBiaya(string $kodeProdi, string $kodeTahun, ?int $semester = null, ?int $statusMahasiswa = null, ?int $idProgramKuliah = null, ?int $statusAwal = null): Collection
     {
         $angkatanIds = BipotPerAngkatan::where('kode_prodi', $kodeProdi)
             ->where('kode_tahun', $kodeTahun)
+            ->when($idProgramKuliah, fn ($q) => $q->where('id_program_kuliah', $idProgramKuliah))
             ->pluck('id');
 
         if ($angkatanIds->isEmpty()) {
@@ -137,6 +145,7 @@ class BipotService
             ->whereIn('id_bipot_angkatan', $angkatanIds)
             ->when($semester, fn ($q) => $q->where('semester', $semester))
             ->when($statusMahasiswa, fn ($q) => $q->whereJsonContains('status_mahasiswa', $statusMahasiswa))
+            ->when($statusAwal, fn ($q) => $q->whereJsonContains('status_awal', $statusAwal))
             ->get()
             ->sortBy(fn ($item) => $item->bipot?->urutan ?? 0)
             ->values();
