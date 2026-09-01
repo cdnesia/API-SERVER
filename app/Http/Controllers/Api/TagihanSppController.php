@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Mahasiswa;
+use App\Models\Tagihan;
 use App\Services\BipotService;
 use App\Services\TagihanService;
 use App\Support\ApiResponse;
@@ -35,10 +36,8 @@ class TagihanSppController extends Controller
         }
 
         try {
-            [, $semester, $summary] = $this->resolveTagihanData(
-                $request->json('npm'),
-                $request->json('tahun_akademik'),
-            );
+            $mahasiswa = $this->findMahasiswa($request->json('npm'));
+            [$semester, $summary] = $this->computeSummary($mahasiswa, $request->json('tahun_akademik'));
 
             return ApiResponse::success($summary + ['semester' => $semester]);
         } catch (\RuntimeException $e) {
@@ -52,6 +51,7 @@ class TagihanSppController extends Controller
             return ApiResponse::error('Gagal menghitung rincian tagihan SPP', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
+
     public function create(Request $request): JsonResponse
     {
         $validator = $this->validateInput($request);
@@ -64,7 +64,19 @@ class TagihanSppController extends Controller
         $tahunAkademik = $request->json('tahun_akademik');
 
         try {
-            [$mahasiswa, , $summary] = $this->resolveTagihanData($npm, $tahunAkademik);
+            $mahasiswa = $this->findMahasiswa($npm);
+
+            $existing = $this->findExistingTagihan($mahasiswa->npm, $mahasiswa->kode_program_studi, $tahunAkademik);
+
+            if ($existing) {
+                return ApiResponse::success([
+                    'message'       => 'Tagihan SPP untuk NPM, prodi, dan tahun akademik ini sudah ada, dilewati.',
+                    'nomor_tagihan' => $existing->nomor_tagihan,
+                    'data'          => $this->tagihanService->formatTagihan($existing),
+                ]);
+            }
+
+            [, $summary] = $this->computeSummary($mahasiswa, $tahunAkademik);
 
             $tagihan = $this->tagihanService->create([
                 'npm'                    => $mahasiswa->npm,
@@ -111,10 +123,19 @@ class TagihanSppController extends Controller
             'tahun_akademik.regex'    => 'Format tahun akademik tidak valid (YYYY1/YYYY2).',
         ]);
     }
-    protected function resolveTagihanData(string $npm, string $tahunAkademik): array
+
+    /**
+     * Hitung semester berjalan dan rincian bipot (prodi + angkatan + kelas
+     * kuliah + jalur masuk mahasiswa), lalu ringkas jadi total biaya /
+     * potongan / nominal ditagih.
+     *
+     * @return array{0: int, 1: array}  [$semester, $summary]
+     *
+     * @throws \RuntimeException  jika rincian bipot tidak ditemukan
+     */
+    protected function computeSummary(Mahasiswa $mahasiswa, string $tahunAkademik): array
     {
-        $mahasiswa = $this->findMahasiswa($npm);
-        $semester  = $this->resolveSemester($mahasiswa->tahun_angkatan, $tahunAkademik);
+        $semester = $this->resolveSemester($mahasiswa->tahun_angkatan, $tahunAkademik);
 
         $rincian = $this->bipotService->getRincianBiaya(
             $mahasiswa->kode_program_studi,
@@ -131,7 +152,20 @@ class TagihanSppController extends Controller
             );
         }
 
-        return [$mahasiswa, $semester, $this->summarize($mahasiswa, $rincian)];
+        return [$semester, $this->summarize($mahasiswa, $rincian)];
+    }
+
+    /**
+     * Cek apakah tagihan SPP untuk npm + prodi + tahun akademik ini sudah
+     * pernah dibuat, supaya create() tidak membuat duplikat.
+     */
+    protected function findExistingTagihan(string $npm, string $kodeProdi, string $tahunAkademik): ?Tagihan
+    {
+        return Tagihan::where('npm', $npm)
+            ->where('jenis_tagihan', 'SPP')
+            ->where('kode_program_studi', $kodeProdi)
+            ->where('tahun_akademik', $tahunAkademik)
+            ->first();
     }
 
     protected function findMahasiswa(string $npm): Mahasiswa
