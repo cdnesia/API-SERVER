@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\TokenController;
 use App\Http\Controllers\Api\BipotController;
 use App\Http\Controllers\Api\TagihanController;
+use App\Http\Controllers\Api\TagihanPmbController;
 use App\Http\Controllers\Api\TagihanSppController;
 use App\Http\Controllers\Api\TelegramController;
 use App\Support\ApiResponse;
@@ -33,6 +34,15 @@ Route::middleware('jwt.auth')->group(function () {
         Route::post('/delete', [TagihanController::class, 'delete'])
             ->middleware('scope:tagihan:write,tagihan:delete');
     });
+
+     Route::prefix('tagihan-pmb')->group(function () {
+        Route::post('/', [TagihanPmbController::class, 'index'])
+            ->middleware('scope:tagihan-pmb:read,tagihan-pmb:get');
+
+        Route::post('/create', [TagihanPmbController::class, 'create'])
+            ->middleware('scope:tagihan-pmb:write,tagihan-pmb:create');
+    });
+
 
     Route::prefix('tagihan-spp')->group(function () {
         Route::post('/', [TagihanSppController::class, 'index'])

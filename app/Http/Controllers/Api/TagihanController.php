@@ -17,9 +17,6 @@ class TagihanController extends Controller
         protected TagihanService $tagihanService,
     ) {}
 
-    /**
-     * Ambil daftar tagihan berdasarkan NPM, opsional filter periode.
-     */
     public function index(Request $request): \Illuminate\Http\JsonResponse
     {
         $npmInput     = $request->json('npms');
@@ -74,21 +71,6 @@ class TagihanController extends Controller
         }
     }
 
-    /**
-     * Buat tagihan baru (general-purpose, semua jenis tagihan).
-     *
-     * Data mahasiswa (nama, prodi, fakultas, va_code) diambil otomatis dari NPM —
-     * cukup kirim npm, tahun_akademik, dan total_tagihan.
-     *
-     * nomor_tagihan otomatis dibentuk dari {kode_tagihan}{va_code}. Jika
-     * kode_tagihan tidak dikirim, otomatis dipakai 2 digit terakhir
-     * tahun_akademik (mis. "20242" → "42").
-     *
-     * Body: { "npm": "...", "tahun_akademik": "20241", "total_tagihan": 5000000,
-     *         "jenis_tagihan": "...", "kode_tagihan": "99", "id_kelas_perkuliahan": "...",
-     *         "nama_kelas_perkuliahan": "...", "waktu_berakhir": "2025-12-31", "nominal_ditagih": 5000000,
-     *         "detail_tagihan": [...], "total_potongan": 0, "detail_potongan": [...], "status_aktif": "Y" }
-     */
     public function create(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -152,12 +134,6 @@ class TagihanController extends Controller
             return ApiResponse::error('Gagal membuat tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
-
-    /**
-     * Update tagihan berdasarkan nomor_tagihan.
-     *
-     * Body: { "nomor_tagihan": "...", "npm": "...", ... }
-     */
     public function update(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
@@ -214,12 +190,6 @@ class TagihanController extends Controller
             return ApiResponse::error('Gagal memperbarui tagihan', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
-
-    /**
-     * Hapus tagihan berdasarkan nomor_tagihan (soft delete).
-     *
-     * Body: { "nomor_tagihan": "..." }
-     */
     public function delete(Request $request): \Illuminate\Http\JsonResponse
     {
         $validator = Validator::make($request->json()->all(), [
