@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Api\Auth\TokenController;
 use App\Http\Controllers\Api\BipotController;
+use App\Http\Controllers\Api\KrsController;
+use App\Http\Controllers\Api\PegawaiController;
+use App\Http\Controllers\Api\ProdiController;
 use App\Http\Controllers\Api\TagihanController;
 use App\Http\Controllers\Api\TagihanPmbController;
 use App\Http\Controllers\Api\TagihanSppController;
@@ -98,6 +101,21 @@ Route::middleware('jwt.auth')->group(function () {
             Route::post('/delete', [BipotController::class, 'rincianDelete'])
                 ->middleware('scope:bipot:write,bipot:rincian-delete');
         });
+    });
+
+    Route::prefix('krs')->group(function () {
+        Route::post('/cetak', [KrsController::class, 'cetak'])
+            ->middleware('scope:krs:read,krs:cetak');
+    });
+
+    Route::prefix('pegawai')->group(function () {
+        Route::post('/', [PegawaiController::class, 'index'])
+            ->middleware('scope:pegawai:read,pegawai:get');
+    });
+
+    Route::prefix('prodi')->group(function () {
+        Route::post('/', [ProdiController::class, 'index'])
+            ->middleware('scope:prodi:read,prodi:get');
     });
 
     Route::prefix('telegram')->group(function () {
