@@ -35,8 +35,8 @@ Route::middleware('jwt.auth')->group(function () {
     });
 
     Route::prefix('tagihan-spp')->group(function () {
-        Route::post('/', [TagihanSppController::class, 'preview'])
-            ->middleware('scope:tagihan-spp:read,tagihan-spp:preview');
+        Route::post('/', [TagihanSppController::class, 'index'])
+            ->middleware('scope:tagihan-spp:read,tagihan-spp:get');
 
         Route::post('/create', [TagihanSppController::class, 'create'])
             ->middleware('scope:tagihan-spp:write,tagihan-spp:create');

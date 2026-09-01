@@ -27,31 +27,57 @@ class TagihanSppController extends Controller
         protected TagihanService $tagihanService,
     ) {}
 
-    public function preview(Request $request): JsonResponse
+    /**
+     * Ambil seluruh riwayat tagihan SPP mahasiswa, cari berdasarkan npm saja.
+     *
+     * Body: { "npm": "..." }
+     */
+    public function index(Request $request): JsonResponse
     {
-        $validator = $this->validateInput($request);
+        $validator = Validator::make($request->json()->all(), [
+            'npm' => ['required', 'string', 'max:20'],
+        ], [
+            'npm.required' => 'NPM wajib diisi.',
+        ]);
 
         if ($validator->fails()) {
             return ApiResponse::error('Validasi gagal', $validator->errors(), 422, ErrorCode::VALIDATION_FAILED);
         }
 
-        try {
-            $mahasiswa = $this->findMahasiswa($request->json('npm'));
-            [$semester, $summary] = $this->computeSummary($mahasiswa, $request->json('tahun_akademik'));
+        $npm = $request->json('npm');
 
-            return ApiResponse::success($summary + ['semester' => $semester]);
-        } catch (\RuntimeException $e) {
-            return ApiResponse::error($e->getMessage(), null, 404, ErrorCode::DATA_NOT_FOUND);
+        try {
+            $tagihan = Tagihan::where('npm', $npm)
+                ->where('jenis_tagihan', 'SPP')
+                ->orderBy('tahun_akademik', 'desc')
+                ->get();
+
+            return ApiResponse::success(
+                $tagihan->map(fn ($t) => $this->tagihanService->formatTagihan($t))
+            );
         } catch (\Throwable $e) {
-            Log::error('TagihanSppController: gagal menghitung rincian tagihan SPP.', [
-                'npm'     => $request->json('npm'),
+            Log::error('TagihanSppController: gagal mengambil data tagihan SPP.', [
+                'npm'     => $npm,
                 'message' => $e->getMessage(),
             ]);
 
-            return ApiResponse::error('Gagal menghitung rincian tagihan SPP', null, 500, ErrorCode::INTERNAL_ERROR);
+            return ApiResponse::error('Gagal mengambil data tagihan SPP', null, 500, ErrorCode::INTERNAL_ERROR);
         }
     }
 
+    /**
+     * Buat tagihan SPP baru untuk satu mahasiswa dari rincian bipot (biaya - potongan).
+     *
+     * Client hanya kirim npm + tahun_akademik. Data mahasiswa (nama, prodi,
+     * fakultas, va_code, kelas kuliah, angkatan, jalur masuk) diambil otomatis
+     * dari NPM. tahun_akademik hanya jadi label periode tagihan (dan bahan
+     * nomor_tagihan), bukan untuk lookup tarif — tarif ditentukan dari angkatan.
+     *
+     * nomor_tagihan otomatis dibentuk dari {2 digit terakhir tahun_akademik}{va_code},
+     * mengikuti konvensi TagihanController::create.
+     *
+     * Body: { "npm": "...", "tahun_akademik": "20241" }
+     */
     public function create(Request $request): JsonResponse
     {
         $validator = $this->validateInput($request);
@@ -234,7 +260,6 @@ class TagihanSppController extends Controller
 
         return [
             'npm'             => $mahasiswa->npm,
-            'nomor_tagihan'   => $mahasiswa->nomor_tagihan,
             'nama_mahasiswa'  => $mahasiswa->nama_mahasiswa,
             'kode_prodi'      => $mahasiswa->kode_program_studi,
             'total_biaya'     => $totalBiaya,
