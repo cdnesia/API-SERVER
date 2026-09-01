@@ -48,7 +48,6 @@ class TagihanSppController extends Controller
 
         try {
             $tagihan = Tagihan::where('npm', $npm)
-                ->where('jenis_tagihan', 'SPP')
                 ->orderBy('tahun_akademik', 'desc')
                 ->get();
 
