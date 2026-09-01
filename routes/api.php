@@ -38,10 +38,13 @@ Route::middleware('jwt.auth')->group(function () {
      Route::prefix('tagihan-pmb')->group(function () {
         Route::post('/', [TagihanPmbController::class, 'index'])
             ->middleware('scope:tagihan-pmb:read,tagihan-pmb:get');
+       
+            Route::post('/massal', [TagihanPmbController::class, 'massal'])
+            ->middleware('scope:tagihan-pmb:massal,tagihan-pmb:massal');
 
         Route::post('/create', [TagihanPmbController::class, 'create'])
             ->middleware('scope:tagihan-pmb:write,tagihan-pmb:create');
-            
+
         Route::post('/update', [TagihanPmbController::class, 'edit'])
             ->middleware('scope:tagihan-pmb:edit,tagihan-pmb:edit');
     });
