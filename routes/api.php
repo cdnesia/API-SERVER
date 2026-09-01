@@ -108,6 +108,11 @@ Route::middleware('jwt.auth')->group(function () {
             ->middleware('scope:krs:read,krs:cetak');
     });
 
+     Route::prefix('khs')->group(function () {
+        Route::post('/cetak', [KrsController::class, 'cetak'])
+            ->middleware('scope:khs:read,khs:cetak');
+    });
+
     Route::prefix('pegawai')->group(function () {
         Route::post('/', [PegawaiController::class, 'index'])
             ->middleware('scope:pegawai:read,pegawai:get');
