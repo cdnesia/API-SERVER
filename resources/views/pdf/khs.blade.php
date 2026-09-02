@@ -216,7 +216,7 @@
 
     <br><br>
 
-    <table style="width:100%; margin-top:10px;">
+    <table style="width:100%; margin-top:5px;">
         <tr>
             <td style="width:50%;"></td>
             <td style="width:50%; text-align:right;">
