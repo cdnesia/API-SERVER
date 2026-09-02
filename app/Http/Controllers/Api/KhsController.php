@@ -46,7 +46,7 @@ class KhsController extends Controller
 
         try {
             $saya = $this->akademik->getStudent($npm);
-            $krs  = $this->akademik->getKhs($npm, $periode);
+            // $krs  = $this->akademik->getKhs($npm, $periode);
         } catch (QueryException $e) {
             Log::error('KhsController: gagal terhubung ke database.', ['npm' => $npm, 'message' => $e->getMessage()]);
 
