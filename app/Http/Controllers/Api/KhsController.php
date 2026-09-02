@@ -44,12 +44,9 @@ class KhsController extends Controller
         $periode = $request->json('periode');
         $view    = $request->json('view', 'download');
 
-
-
         try {
             $saya = $this->akademik->getStudent($npm);
             $krs  = $this->akademik->getKhs($npm, $periode);
-            return ApiResponse::success($krs);
         } catch (QueryException $e) {
             Log::error('KhsController: gagal terhubung ke database.', ['npm' => $npm, 'message' => $e->getMessage()]);
 
