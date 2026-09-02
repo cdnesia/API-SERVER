@@ -75,7 +75,7 @@ class KhsController extends Controller
         $filename = "KHS_{$npm}_{$suffix}.pdf";
 
 
-        return ApiResponse::success([$saya, $krs]);
+        // return ApiResponse::success([$saya, $krs]);
 
         return $view === 'inline'
             ? $pdf->inline($filename)
