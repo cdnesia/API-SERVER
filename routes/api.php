@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Auth\TokenController;
 use App\Http\Controllers\Api\BipotController;
+use App\Http\Controllers\Api\KhsController;
 use App\Http\Controllers\Api\KrsController;
 use App\Http\Controllers\Api\PegawaiController;
 use App\Http\Controllers\Api\ProdiController;
@@ -109,7 +110,7 @@ Route::middleware('jwt.auth')->group(function () {
     });
 
      Route::prefix('khs')->group(function () {
-        Route::post('/cetak', [KrsController::class, 'cetak'])
+        Route::post('/cetak', [KhsController::class, 'cetak'])
             ->middleware('scope:khs:read,khs:cetak');
     });
 
