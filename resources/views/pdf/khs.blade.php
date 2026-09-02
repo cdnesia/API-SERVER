@@ -214,7 +214,7 @@
         $tanggal = \Carbon\Carbon::now()->translatedFormat('d F Y');
     @endphp
 
-    <br><br>
+    <br>
 
     <table style="width:100%; margin-top:5px;">
         <tr>
