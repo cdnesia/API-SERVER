@@ -225,8 +225,6 @@
         </tr>
     </table>
 
-    <br>
-
     <table style="width:100%;">
         <tr>
             <td style="width:50%; text-align:center;">
