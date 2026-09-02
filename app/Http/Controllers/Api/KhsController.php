@@ -74,9 +74,6 @@ class KhsController extends Controller
         $suffix   = $periode ?? 'semua';
         $filename = "KHS_{$npm}_{$suffix}.pdf";
 
-
-        // return ApiResponse::success([$saya, $krs]);
-
         return $view === 'inline'
             ? $pdf->inline($filename)
             : $pdf->download($filename);
