@@ -121,13 +121,11 @@ class TagihanPmbController extends Controller
             'npms'             => ['required', 'array', 'min:1'],
             'npms.*'           => ['required', 'string', 'max:30'],
             'tahun_akademik'   => ['nullable', 'array'],
-            // 'tahun_akademik.*' => ['string', 'regex:/^\d{4}[12]$/'],
         ], [
             'npms.required'          => 'npms wajib diisi.',
             'npms.array'             => 'npms harus berupa array.',
             'npms.min'               => 'Minimal 1 NPM.',
             'npms.*.required'        => 'NPM wajib diisi.',
-            // 'tahun_akademik.*.regex' => 'Format tahun akademik tidak valid (YYYY1/YYYY2).',
         ]);
 
         if ($validator->fails()) {

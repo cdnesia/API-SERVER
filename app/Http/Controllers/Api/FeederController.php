@@ -229,7 +229,7 @@ class FeederController extends Controller
         }
         if ($periode) {
             $periodeList = array_map(fn($p) => "'" . addslashes($p) . "'", $periode);
-            $conditions[] = 'id_periode IN (' . implode(',', $periodeList) . ')';
+            $conditions[] = 'id_periode_masuk IN (' . implode(',', $periodeList) . ')';
         }
         $filter = implode(' AND ', $conditions);
 
