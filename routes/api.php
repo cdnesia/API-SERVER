@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Auth\TokenController;
 use App\Http\Controllers\Api\BipotController;
+use App\Http\Controllers\Api\FeederController;
 use App\Http\Controllers\Api\KhsController;
 use App\Http\Controllers\Api\KrsController;
 use App\Http\Controllers\Api\PegawaiController;
@@ -39,11 +40,11 @@ Route::middleware('jwt.auth')->group(function () {
             ->middleware('scope:tagihan:write,tagihan:delete');
     });
 
-     Route::prefix('tagihan-pmb')->group(function () {
+    Route::prefix('tagihan-pmb')->group(function () {
         Route::post('/', [TagihanPmbController::class, 'index'])
             ->middleware('scope:tagihan-pmb:read,tagihan-pmb:get');
-       
-            Route::post('/massal', [TagihanPmbController::class, 'massal'])
+
+        Route::post('/massal', [TagihanPmbController::class, 'massal'])
             ->middleware('scope:tagihan-pmb:massal,tagihan-pmb:massal');
 
         Route::post('/create', [TagihanPmbController::class, 'create'])
@@ -109,7 +110,7 @@ Route::middleware('jwt.auth')->group(function () {
             ->middleware('scope:krs:read,krs:cetak');
     });
 
-     Route::prefix('khs')->group(function () {
+    Route::prefix('khs')->group(function () {
         Route::post('/cetak', [KhsController::class, 'cetak'])
             ->middleware('scope:khs:read,khs:cetak');
     });
@@ -122,6 +123,13 @@ Route::middleware('jwt.auth')->group(function () {
     Route::prefix('prodi')->group(function () {
         Route::post('/', [ProdiController::class, 'index'])
             ->middleware('scope:prodi:read,prodi:get');
+    });
+
+    Route::prefix('feeder')->middleware('scope:feeder:read')->group(function () {
+        Route::post('/cari-by-npm', [FeederController::class, 'cariByNpm']);
+        Route::post('/mahasiswa-akm', [FeederController::class, 'mahasiswaAkm']);
+        Route::post('/mahasiswa-keluar', [FeederController::class, 'mahasiswaKeluar']);
+        Route::post('/mahasiswa-masuk', [FeederController::class, 'mahasiswaMasuk']);
     });
 
     Route::prefix('telegram')->group(function () {
